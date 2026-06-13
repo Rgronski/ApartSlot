@@ -1,0 +1,231 @@
+import { PaymentStatus, ReservationStatus, type PrismaClient } from "@prisma/client";
+
+import { prisma } from "@/lib/db/prisma";
+
+type DashboardMetric = {
+  label: string;
+  value: string;
+  hint: string;
+};
+
+type DashboardReservation = {
+  id: string;
+  reservationNumber: string;
+  apartmentName: string;
+  guestName: string;
+  checkInDate: string;
+  checkOutDate: string;
+  status: ReservationStatus;
+  paymentStatus: PaymentStatus;
+  totalAmount: number;
+  amountToPayNow: number;
+  currency: string;
+  createdAt: string;
+};
+
+type DashboardAttentionPayment = {
+  id: string;
+  reservationNumber: string;
+  guestName: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  expiresAt: string | null;
+  paymentUrl: string | null;
+};
+
+type DashboardApartment = {
+  id: string;
+  name: string;
+  city: string | null;
+  isActive: boolean;
+  googleCalendarId: string | null;
+};
+
+export type AdminDashboardData =
+  | {
+      state: "ready";
+      metrics: DashboardMetric[];
+      recentReservations: DashboardReservation[];
+      attentionPayments: DashboardAttentionPayment[];
+      apartments: DashboardApartment[];
+    }
+  | {
+      state: "missing_database";
+      message: string;
+    }
+  | {
+      state: "error";
+      message: string;
+    };
+
+function formatDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDateTime(date: Date) {
+  return date.toISOString().slice(0, 16).replace("T", " ");
+}
+
+function formatMoney(value: number, currency: string) {
+  return `${value.toFixed(2)} ${currency}`;
+}
+
+export async function getAdminDashboardData(
+  db: PrismaClient = prisma,
+): Promise<AdminDashboardData> {
+  if (!process.env.DATABASE_URL) {
+    return {
+      state: "missing_database",
+      message:
+        "Baza danych nie jest jeszcze podlaczona. Dodaj DATABASE_URL i DIRECT_URL, aby panel mogl pobierac rezerwacje oraz platnosci.",
+    };
+  }
+
+  try {
+    const [
+      apartmentCount,
+      activeApartmentCount,
+      pendingReservationCount,
+      confirmedReservationCount,
+      pendingPaymentCount,
+      recentReservations,
+      attentionPayments,
+      apartments,
+    ] = await Promise.all([
+      db.apartment.count(),
+      db.apartment.count({
+        where: {
+          isActive: true,
+        },
+      }),
+      db.reservation.count({
+        where: {
+          status: ReservationStatus.PENDING_PAYMENT,
+        },
+      }),
+      db.reservation.count({
+        where: {
+          status: ReservationStatus.CONFIRMED,
+        },
+      }),
+      db.payment.count({
+        where: {
+          status: {
+            in: [PaymentStatus.CREATED, PaymentStatus.LINK_SENT, PaymentStatus.PENDING],
+          },
+        },
+      }),
+      db.reservation.findMany({
+        take: 6,
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          apartment: true,
+          guest: true,
+        },
+      }),
+      db.payment.findMany({
+        take: 6,
+        orderBy: [
+          {
+            paymentExpiresAt: "asc",
+          },
+          {
+            createdAt: "desc",
+          },
+        ],
+        where: {
+          status: {
+            in: [PaymentStatus.CREATED, PaymentStatus.LINK_SENT, PaymentStatus.PENDING],
+          },
+        },
+        include: {
+          reservation: {
+            include: {
+              guest: true,
+            },
+          },
+        },
+      }),
+      db.apartment.findMany({
+        take: 6,
+        orderBy: {
+          createdAt: "asc",
+        },
+      }),
+    ]);
+
+    return {
+      state: "ready",
+      metrics: [
+        {
+          label: "Apartamenty",
+          value: String(apartmentCount),
+          hint: `${activeApartmentCount} aktywne do sprzedazy`,
+        },
+        {
+          label: "Rezerwacje oczekujace",
+          value: String(pendingReservationCount),
+          hint: "Klienci czekaja na platnosc lub jej potwierdzenie",
+        },
+        {
+          label: "Rezerwacje potwierdzone",
+          value: String(confirmedReservationCount),
+          hint: "Te pobyty sa juz zamkniete po stronie sprzedazy",
+        },
+        {
+          label: "Platnosci do dopilnowania",
+          value: String(pendingPaymentCount),
+          hint: "Link wyslany lub platnosc nadal w toku",
+        },
+      ],
+      recentReservations: recentReservations.map((reservation) => ({
+        id: reservation.id,
+        reservationNumber: reservation.reservationNumber,
+        apartmentName: reservation.apartment.name,
+        guestName: `${reservation.guest.firstName} ${reservation.guest.lastName}`,
+        checkInDate: formatDate(reservation.checkInDate),
+        checkOutDate: formatDate(reservation.checkOutDate),
+        status: reservation.status,
+        paymentStatus: reservation.paymentStatus,
+        totalAmount: Number(reservation.totalAmount),
+        amountToPayNow: Number(reservation.amountToPayNow),
+        currency: reservation.currency,
+        createdAt: formatDateTime(reservation.createdAt),
+      })),
+      attentionPayments: attentionPayments.map((payment) => ({
+        id: payment.id,
+        reservationNumber: payment.reservation.reservationNumber,
+        guestName: `${payment.reservation.guest.firstName} ${payment.reservation.guest.lastName}`,
+        amount: Number(payment.amount),
+        currency: payment.currency,
+        status: payment.status,
+        expiresAt: payment.paymentExpiresAt ? formatDateTime(payment.paymentExpiresAt) : null,
+        paymentUrl: payment.paymentUrl,
+      })),
+      apartments: apartments.map((apartment) => ({
+        id: apartment.id,
+        name: apartment.name,
+        city: apartment.city,
+        isActive: apartment.isActive,
+        googleCalendarId: apartment.googleCalendarId,
+      })),
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Nie udalo sie pobrac danych do panelu administratora.";
+
+    return {
+      state: "error",
+      message,
+    };
+  }
+}
+
+export function formatDashboardMoney(value: number, currency: string) {
+  return formatMoney(value, currency);
+}

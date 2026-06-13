@@ -1,0 +1,281 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ReservationStatus {
+  DRAFT
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+  MANUAL_BLOCK
+  COMPLETED
+}
+
+enum PaymentStatus {
+  CREATED
+  LINK_SENT
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
+enum ReservationSource {
+  WEBSITE
+  ADMIN
+  PHONE
+  EMAIL
+  MESSENGER
+  WHATSAPP
+  BOOKING
+  AIRBNB
+  MANUAL
+  OTHER
+}
+
+enum PaymentProvider {
+  STRIPE
+  PRZELEWY24
+  PAYU
+  TPAY
+  MANUAL_TRANSFER
+  OTHER
+}
+
+enum PricingRuleType {
+  SEASONAL
+  WEEKEND
+  EVENT
+  CUSTOM
+}
+
+enum EmailLogStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum AdminUserRole {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+model Apartment {
+  id                  String          @id @default(uuid()) @db.Uuid
+  name                String
+  slug                String          @unique
+  address             String?
+  city                String?
+  description         String?
+  maxGuests           Int
+  basePricePerNight   Decimal         @db.Decimal(10, 2)
+  cleaningFee         Decimal         @db.Decimal(10, 2)
+  depositAmount       Decimal         @db.Decimal(10, 2)
+  currency            String          @default("PLN")
+  minimumNights       Int             @default(1)
+  defaultCheckInTime  String?
+  defaultCheckOutTime String?
+  googleCalendarId    String?
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  reservations        Reservation[]
+  pricingRules        PricingRule[]
+  calendarBlocks      CalendarBlock[]
+
+  @@index([isActive])
+  @@map("apartments")
+}
+
+model Guest {
+  id               String        @id @default(uuid()) @db.Uuid
+  firstName        String
+  lastName         String
+  email            String
+  phone            String
+  country          String?
+  city             String?
+  language         String?       @default("pl")
+  marketingConsent Boolean       @default(false)
+  termsAccepted    Boolean       @default(false)
+  rodoAccepted     Boolean       @default(false)
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  reservations     Reservation[]
+  emailLogs        EmailLog[]
+
+  @@index([email])
+  @@index([phone])
+  @@map("guests")
+}
+
+model Reservation {
+  id                  String             @id @default(uuid()) @db.Uuid
+  reservationNumber   String             @unique
+  apartmentId         String             @db.Uuid
+  guestId             String             @db.Uuid
+  checkInDate         DateTime           @db.Date
+  checkOutDate        DateTime           @db.Date
+  nightsCount         Int
+  guestsCount         Int
+  pricePerNight       Decimal            @db.Decimal(10, 2)
+  accommodationAmount Decimal            @db.Decimal(10, 2)
+  cleaningFee         Decimal            @db.Decimal(10, 2)
+  depositAmount       Decimal            @db.Decimal(10, 2)
+  discountAmount      Decimal            @default(0) @db.Decimal(10, 2)
+  totalAmount         Decimal            @db.Decimal(10, 2)
+  amountToPayNow      Decimal            @db.Decimal(10, 2)
+  paidAmount          Decimal            @default(0) @db.Decimal(10, 2)
+  currency            String             @default("PLN")
+  status              ReservationStatus  @default(DRAFT)
+  paymentStatus       PaymentStatus      @default(CREATED)
+  source              ReservationSource  @default(WEBSITE)
+  createdByType       String             @default("customer")
+  calendarEventId     String?
+  holdExpiresAt       DateTime?
+  confirmedAt         DateTime?
+  cancelledAt         DateTime?
+  completedAt         DateTime?
+  customerNotes       String?
+  adminNotes          String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  apartment           Apartment          @relation(fields: [apartmentId], references: [id], onDelete: Restrict)
+  guest               Guest              @relation(fields: [guestId], references: [id], onDelete: Restrict)
+  payments            Payment[]
+  emailLogs           EmailLog[]
+
+  @@index([apartmentId, checkInDate, checkOutDate])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([holdExpiresAt])
+  @@index([source])
+  @@map("reservations")
+}
+
+model Payment {
+  id                String          @id @default(uuid()) @db.Uuid
+  reservationId     String          @db.Uuid
+  provider          PaymentProvider @default(STRIPE)
+  providerPaymentId String?
+  paymentToken      String          @unique
+  paymentUrl        String?
+  amount            Decimal         @db.Decimal(10, 2)
+  currency          String          @default("PLN")
+  status            PaymentStatus   @default(CREATED)
+  paymentExpiresAt  DateTime?
+  paymentLinkSentAt DateTime?
+  paymentLinkSentTo String?
+  paymentLinkOpenedAt DateTime?
+  paidAt            DateTime?
+  failedAt          DateTime?
+  refundedAt        DateTime?
+  rawWebhookPayload Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  reservation       Reservation     @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@index([providerPaymentId])
+  @@index([status])
+  @@index([paymentExpiresAt])
+  @@map("payments")
+}
+
+model PricingRule {
+  id             String          @id @default(uuid()) @db.Uuid
+  apartmentId    String          @db.Uuid
+  name           String
+  ruleType       PricingRuleType @default(CUSTOM)
+  dateFrom       DateTime        @db.Date
+  dateTo         DateTime        @db.Date
+  pricePerNight  Decimal         @db.Decimal(10, 2)
+  minimumNights  Int?
+  daysOfWeek     Json?
+  priority       Int             @default(0)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  apartment      Apartment       @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@index([apartmentId, dateFrom, dateTo])
+  @@index([isActive])
+  @@index([priority])
+  @@map("pricing_rules")
+}
+
+model CalendarBlock {
+  id              String    @id @default(uuid()) @db.Uuid
+  apartmentId     String    @db.Uuid
+  dateFrom        DateTime  @db.Date
+  dateTo          DateTime  @db.Date
+  reason          String?
+  calendarEventId String?
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@index([apartmentId, dateFrom, dateTo])
+  @@map("calendar_blocks")
+}
+
+model EmailLog {
+  id                String         @id @default(uuid()) @db.Uuid
+  reservationId     String?        @db.Uuid
+  guestId           String?        @db.Uuid
+  type              String
+  recipientEmail    String
+  subject           String
+  status            EmailLogStatus @default(PENDING)
+  providerMessageId String?
+  errorMessage      String?
+  sentAt            DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  reservation       Reservation?   @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  guest             Guest?         @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  @@index([reservationId])
+  @@index([guestId])
+  @@index([status])
+  @@map("email_logs")
+}
+
+model AppSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  value       String
+  type        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+model AdminUser {
+  id          String        @id @default(uuid()) @db.Uuid
+  email       String        @unique
+  name        String?
+  role        AdminUserRole @default(ADMIN)
+  isActive    Boolean       @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([role])
+  @@index([isActive])
+  @@map("admin_users")
+}
