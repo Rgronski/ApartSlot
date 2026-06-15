@@ -1,5 +1,10 @@
 import Stripe from "stripe";
-import { PaymentStatus, ReservationStatus, type PrismaClient } from "@prisma/client";
+import {
+  Prisma,
+  PaymentStatus,
+  ReservationStatus,
+  type PrismaClient,
+} from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { syncConfirmedReservationToGoogleCalendar } from "@/services/calendar";
@@ -55,6 +60,10 @@ function buildStoredWebhookPayload(event: Stripe.Event) {
   };
 }
 
+function toPrismaJson(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
 async function findPaymentBySession(
   db: PrismaClient,
   session: Stripe.Checkout.Session,
@@ -108,7 +117,7 @@ async function markPaymentAsPaid(
       );
     }
 
-    const payload = buildStoredWebhookPayload(event);
+    const payload = toPrismaJson(buildStoredWebhookPayload(event));
 
     if (currentPayment.status === PaymentStatus.PAID) {
       await tx.payment.update({
@@ -190,7 +199,7 @@ async function markPaymentAsFailed(
     );
   }
 
-  const payload = buildStoredWebhookPayload(event);
+  const payload = toPrismaJson(buildStoredWebhookPayload(event));
 
   await db.$transaction(async (tx) => {
     await tx.payment.update({
@@ -231,7 +240,7 @@ async function markPaymentAsExpired(
     );
   }
 
-  const payload = buildStoredWebhookPayload(event);
+  const payload = toPrismaJson(buildStoredWebhookPayload(event));
 
   await db.$transaction(async (tx) => {
     await tx.payment.update({
