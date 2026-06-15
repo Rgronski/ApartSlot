@@ -25,6 +25,7 @@ Dodanie modeli danych w Prisma oraz logiki sprawdzania dostepnosci terminow.
 - [Kalkulacja ceny](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/kalkulacja-ceny.md>)
 - [Tworzenie rezerwacji online](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/tworzenie-rezerwacji-online.md>)
 - [Podpiecie Supabase i Prisma](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/podpiecie-supabase-prisma.md>)
+- [SQL MVP do Supabase](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/supabase-sql-mvp.md>)
 - [Endpoint API rezerwacje](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/endpoint-api-rezerwacje.md>)
 - [Strona platnosci pay token](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/strona-platnosci-pay-token.md>)
 - [Integracja Stripe Checkout](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/integracja-stripe-checkout.md>)
