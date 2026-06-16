@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PricingRuleType } from "@prisma/client";
 
+import { APP_VERSION } from "@/lib/app-version";
 import { DomainError } from "@/lib/errors/domain-error";
 import { createApartment } from "@/services/admin/create-apartment";
 import { createPricingRule } from "@/services/admin/create-pricing-rule";
@@ -188,6 +189,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       <section className="admin-hero">
         <div>
           <p className="eyebrow">Panel administratora</p>
+          <p className="version-chip">Wersja {APP_VERSION}</p>
           <h1>Centrum obslugi rezerwacji</h1>
           <p className="lead">
             Tutaj zbieramy najwazniejsze informacje: sprzedaz, statusy platnosci
