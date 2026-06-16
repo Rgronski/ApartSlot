@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { PricingRuleType } from "@prisma/client";
 
 import { DomainError } from "@/lib/errors/domain-error";
 import { createApartment } from "@/services/admin/create-apartment";
+import { createPricingRule } from "@/services/admin/create-pricing-rule";
 import {
   formatDashboardMoney,
   getAdminDashboardData,
 } from "@/services/admin/get-admin-dashboard-data";
+import { updateApartment } from "@/services/admin/update-apartment";
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Szkic",
@@ -23,6 +26,13 @@ const statusLabels: Record<string, string> = {
   PAID: "Oplacona",
   FAILED: "Nieudana",
   REFUNDED: "Zwrocona",
+};
+
+const pricingRuleTypeLabels: Record<PricingRuleType, string> = {
+  SEASONAL: "Sezon",
+  WEEKEND: "Weekend",
+  EVENT: "Event",
+  CUSTOM: "Wlasna",
 };
 
 function getBadgeClass(status: string) {
@@ -44,6 +54,20 @@ function readString(formData: FormData, key: string) {
 function readNumber(formData: FormData, key: string) {
   const rawValue = readString(formData, key).replace(",", ".");
   return Number(rawValue);
+}
+
+function readOptionalNumber(formData: FormData, key: string) {
+  const rawValue = readString(formData, key);
+
+  if (!rawValue) {
+    return null;
+  }
+
+  return Number(rawValue.replace(",", "."));
+}
+
+function readBoolean(formData: FormData, key: string) {
+  return formData.get(key) === "on";
 }
 
 type AdminPageProps = {
@@ -91,6 +115,74 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     redirect("/admin?status=created");
   }
 
+  async function updateApartmentAction(formData: FormData) {
+    "use server";
+
+    try {
+      await updateApartment({
+        apartmentId: readString(formData, "apartmentId"),
+        name: readString(formData, "name"),
+        slug: readString(formData, "slug"),
+        city: readString(formData, "city"),
+        address: readString(formData, "address"),
+        description: readString(formData, "description"),
+        maxGuests: readNumber(formData, "maxGuests"),
+        basePricePerNight: readNumber(formData, "basePricePerNight"),
+        cleaningFee: readNumber(formData, "cleaningFee"),
+        depositAmount: readNumber(formData, "depositAmount"),
+        minimumNights: readNumber(formData, "minimumNights"),
+        defaultCheckInTime: readString(formData, "defaultCheckInTime"),
+        defaultCheckOutTime: readString(formData, "defaultCheckOutTime"),
+        googleCalendarId: readString(formData, "googleCalendarId"),
+        isActive: readBoolean(formData, "isActive"),
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie zapisac zmian apartamentu. Sprobuj ponownie.";
+
+      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    redirect("/admin?status=updated");
+  }
+
+  async function createPricingRuleAction(formData: FormData) {
+    "use server";
+
+    const ruleTypeRaw = readString(formData, "ruleType");
+    const ruleType = Object.values(PricingRuleType).includes(
+      ruleTypeRaw as PricingRuleType,
+    )
+      ? (ruleTypeRaw as PricingRuleType)
+      : PricingRuleType.CUSTOM;
+
+    try {
+      await createPricingRule({
+        apartmentId: readString(formData, "apartmentId"),
+        name: readString(formData, "name"),
+        ruleType,
+        dateFrom: readString(formData, "dateFrom"),
+        dateTo: readString(formData, "dateTo"),
+        pricePerNight: readNumber(formData, "pricePerNight"),
+        minimumNights: readOptionalNumber(formData, "minimumNights"),
+        priority: readOptionalNumber(formData, "priority") ?? 0,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie dodac reguly cenowej. Sprobuj ponownie.";
+
+      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    redirect("/admin?status=rule_created");
+  }
+
   return (
     <main className="admin-shell">
       <section className="admin-hero">
@@ -126,6 +218,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         {status === "created" ? (
           <div className="inline-notice inline-notice--success">
             <p>Apartament zostal zapisany poprawnie.</p>
+          </div>
+        ) : null}
+
+        {status === "updated" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Dane apartamentu zostaly zaktualizowane.</p>
+          </div>
+        ) : null}
+
+        {status === "rule_created" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Regula cenowa zostala dodana poprawnie.</p>
           </div>
         ) : null}
 
@@ -392,7 +496,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Apartamenty i kalendarz</p>
-                    <h2>Gotowosc integracji</h2>
+                    <h2>Edycja i ceny specjalne</h2>
                   </div>
                 </div>
 
@@ -418,9 +522,214 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           </span>
                         </div>
                         <p className="inline-meta">
+                          Cena bazowa: {formatDashboardMoney(apartment.basePricePerNight, "PLN")}
+                        </p>
+                        <p className="inline-meta">
+                          Min. noclegi: {apartment.minimumNights} | Max gosci: {apartment.maxGuests}
+                        </p>
+                        <p className="inline-meta">
                           Google Calendar:{" "}
                           {apartment.googleCalendarId ? "podlaczony w rekordzie apartamentu" : "brak ID kalendarza"}
                         </p>
+
+                        <details className="admin-details">
+                          <summary>Edytuj dane apartamentu</summary>
+
+                          <form action={updateApartmentAction} className="admin-form admin-form--nested">
+                            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+                            <div className="admin-form-grid">
+                              <label className="admin-field">
+                                <span>Nazwa apartamentu</span>
+                                <input name="name" type="text" required defaultValue={apartment.name} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Slug</span>
+                                <input name="slug" type="text" defaultValue={apartment.slug} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Miasto</span>
+                                <input name="city" type="text" defaultValue={apartment.city ?? ""} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Adres</span>
+                                <input name="address" type="text" defaultValue={apartment.address ?? ""} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Maksymalna liczba gosci</span>
+                                <input name="maxGuests" type="number" min="1" step="1" required defaultValue={String(apartment.maxGuests)} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Cena bazowa za noc (PLN)</span>
+                                <input name="basePricePerNight" type="number" min="0" step="0.01" required defaultValue={String(apartment.basePricePerNight)} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Sprzatanie (PLN)</span>
+                                <input name="cleaningFee" type="number" min="0" step="0.01" required defaultValue={String(apartment.cleaningFee)} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Kaucja (PLN)</span>
+                                <input name="depositAmount" type="number" min="0" step="0.01" required defaultValue={String(apartment.depositAmount)} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Minimalna liczba nocy</span>
+                                <input name="minimumNights" type="number" min="1" step="1" required defaultValue={String(apartment.minimumNights)} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Check-in</span>
+                                <input name="defaultCheckInTime" type="text" defaultValue={apartment.defaultCheckInTime ?? ""} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Check-out</span>
+                                <input name="defaultCheckOutTime" type="text" defaultValue={apartment.defaultCheckOutTime ?? ""} />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Google Calendar ID</span>
+                                <input name="googleCalendarId" type="text" defaultValue={apartment.googleCalendarId ?? ""} />
+                              </label>
+                            </div>
+
+                            <label className="admin-field">
+                              <span>Opis</span>
+                              <textarea name="description" rows={3} defaultValue={apartment.description ?? ""} />
+                            </label>
+
+                            <label className="admin-toggle">
+                              <input
+                                name="isActive"
+                                type="checkbox"
+                                defaultChecked={apartment.isActive}
+                              />
+                              <span>Apartament jest aktywny i widoczny w sprzedazy</span>
+                            </label>
+
+                            <div className="admin-form-actions">
+                              <button className="cta-button" type="submit">
+                                Zapisz zmiany
+                              </button>
+                            </div>
+                          </form>
+                        </details>
+
+                        <details className="admin-details">
+                          <summary>Dodaj cene specjalna</summary>
+
+                          <form action={createPricingRuleAction} className="admin-form admin-form--nested">
+                            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+                            <div className="admin-form-grid">
+                              <label className="admin-field">
+                                <span>Nazwa reguly</span>
+                                <input
+                                  name="name"
+                                  type="text"
+                                  required
+                                  placeholder="Np. Weekend wakacyjny"
+                                />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Typ reguly</span>
+                                <select name="ruleType" defaultValue={PricingRuleType.SEASONAL}>
+                                  <option value={PricingRuleType.SEASONAL}>Sezon</option>
+                                  <option value={PricingRuleType.WEEKEND}>Weekend</option>
+                                  <option value={PricingRuleType.EVENT}>Event</option>
+                                  <option value={PricingRuleType.CUSTOM}>Wlasna</option>
+                                </select>
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Data od</span>
+                                <input name="dateFrom" type="date" required />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Data do</span>
+                                <input name="dateTo" type="date" required />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Nowa cena za noc (PLN)</span>
+                                <input name="pricePerNight" type="number" min="0" step="0.01" required />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Minimalna liczba nocy</span>
+                                <input name="minimumNights" type="number" min="1" step="1" placeholder="Opcjonalnie" />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Priorytet</span>
+                                <input
+                                  name="priority"
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  defaultValue="10"
+                                />
+                              </label>
+                            </div>
+
+                            <p className="admin-form-note">
+                              Wyzszy priorytet wygrywa, gdy kilka regul pasuje do tej samej nocy.
+                            </p>
+
+                            <div className="admin-form-actions">
+                              <button className="cta-button" type="submit">
+                                Dodaj regule cenowa
+                              </button>
+                            </div>
+                          </form>
+                        </details>
+
+                        <div className="pricing-rule-list">
+                          <p className="pricing-rule-list-title">Aktywne reguly cenowe</p>
+                          {apartment.pricingRules.length === 0 ? (
+                            <p className="inline-meta">
+                              Brak dodatkowych cen. System uzyje ceny bazowej.
+                            </p>
+                          ) : (
+                            <div className="admin-stack">
+                              {apartment.pricingRules.map((rule) => (
+                                <article className="pricing-rule-card" key={rule.id}>
+                                  <div className="admin-row-top">
+                                    <div>
+                                      <h3>{rule.name}</h3>
+                                      <p>
+                                        {pricingRuleTypeLabels[rule.ruleType]} | {rule.dateFrom} - {rule.dateTo}
+                                      </p>
+                                    </div>
+                                    <span className="status-badge status-badge--warning">
+                                      Priorytet {rule.priority}
+                                    </span>
+                                  </div>
+                                  <p className="inline-meta">
+                                    Cena: {formatDashboardMoney(rule.pricePerNight, "PLN")}
+                                  </p>
+                                  <p className="inline-meta">
+                                    Minimalna liczba nocy: {rule.minimumNights ?? "bez limitu"}
+                                  </p>
+                                  {rule.ruleType === PricingRuleType.WEEKEND ? (
+                                    <p className="inline-meta">
+                                      Regula weekendowa dziala dla piatku i soboty.
+                                    </p>
+                                  ) : null}
+                                </article>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </article>
                     ))}
                   </div>
@@ -437,7 +746,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <ul className="admin-checklist">
                   <li>Rezerwacja reczna z poziomu panelu.</li>
                   <li>Reczne blokady terminow bez wchodzenia do bazy.</li>
-                  <li>Edycja cen i zasad pobytu dla apartamentu.</li>
+                  <li>Edycja i usuwanie istniejacych regul cenowych.</li>
                   <li>Docelowo logowanie administratora.</li>
                 </ul>
               </article>

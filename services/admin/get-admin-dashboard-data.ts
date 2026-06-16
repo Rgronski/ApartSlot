@@ -1,4 +1,9 @@
-import { PaymentStatus, ReservationStatus, type PrismaClient } from "@prisma/client";
+import {
+  PaymentStatus,
+  PricingRuleType,
+  ReservationStatus,
+  type PrismaClient,
+} from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 
@@ -37,9 +42,30 @@ type DashboardAttentionPayment = {
 type DashboardApartment = {
   id: string;
   name: string;
+  slug: string;
   city: string | null;
+  address: string | null;
+  description: string | null;
+  maxGuests: number;
+  basePricePerNight: number;
+  cleaningFee: number;
+  depositAmount: number;
+  minimumNights: number;
+  defaultCheckInTime: string | null;
+  defaultCheckOutTime: string | null;
   isActive: boolean;
   googleCalendarId: string | null;
+  pricingRules: {
+    id: string;
+    name: string;
+    ruleType: PricingRuleType;
+    dateFrom: string;
+    dateTo: string;
+    pricePerNight: number;
+    minimumNights: number | null;
+    priority: number;
+    isActive: boolean;
+  }[];
 };
 
 export type AdminDashboardData =
@@ -95,6 +121,22 @@ export async function getAdminDashboardData(
         take: 6,
         orderBy: {
           createdAt: "asc",
+        },
+        include: {
+          pricingRules: {
+            where: {
+              isActive: true,
+            },
+            orderBy: [
+              {
+                priority: "desc",
+              },
+              {
+                dateFrom: "asc",
+              },
+            ],
+            take: 8,
+          },
         },
       }),
     ]);
@@ -233,9 +275,30 @@ export async function getAdminDashboardData(
       apartments: apartments.map((apartment) => ({
         id: apartment.id,
         name: apartment.name,
+        slug: apartment.slug,
         city: apartment.city,
+        address: apartment.address,
+        description: apartment.description,
+        maxGuests: apartment.maxGuests,
+        basePricePerNight: Number(apartment.basePricePerNight),
+        cleaningFee: Number(apartment.cleaningFee),
+        depositAmount: Number(apartment.depositAmount),
+        minimumNights: apartment.minimumNights,
+        defaultCheckInTime: apartment.defaultCheckInTime,
+        defaultCheckOutTime: apartment.defaultCheckOutTime,
         isActive: apartment.isActive,
         googleCalendarId: apartment.googleCalendarId,
+        pricingRules: apartment.pricingRules.map((rule) => ({
+          id: rule.id,
+          name: rule.name,
+          ruleType: rule.ruleType,
+          dateFrom: formatDate(rule.dateFrom),
+          dateTo: formatDate(rule.dateTo),
+          pricePerNight: Number(rule.pricePerNight),
+          minimumNights: rule.minimumNights,
+          priority: rule.priority,
+          isActive: rule.isActive,
+        })),
       })),
       warningMessage,
     };

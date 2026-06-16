@@ -353,7 +353,8 @@ a {
 }
 
 .admin-field input,
-.admin-field textarea {
+.admin-field textarea,
+.admin-field select {
   width: 100%;
   padding: 14px 16px;
   border: 1px solid var(--border);
@@ -364,9 +365,64 @@ a {
 }
 
 .admin-field input:focus,
-.admin-field textarea:focus {
+.admin-field textarea:focus,
+.admin-field select:focus {
   outline: 2px solid rgba(189, 123, 48, 0.18);
   border-color: rgba(189, 123, 48, 0.45);
+}
+
+.admin-form--nested {
+  margin-top: 16px;
+}
+
+.admin-details {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 252, 247, 0.82);
+}
+
+.admin-details summary {
+  cursor: pointer;
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.admin-details[open] summary {
+  margin-bottom: 8px;
+}
+
+.admin-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.admin-toggle input {
+  width: 18px;
+  height: 18px;
+}
+
+.pricing-rule-list {
+  margin-top: 18px;
+}
+
+.pricing-rule-list-title {
+  margin: 0 0 12px;
+  color: var(--accent-dark);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pricing-rule-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 248, 236, 0.7);
 }
 
 .admin-form-actions {
