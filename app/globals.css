@@ -111,6 +111,10 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.booking-card {
+  margin-top: 24px;
+}
+
 .info-card,
 .admin-card,
 .payment-card {
@@ -416,6 +420,11 @@ a {
 .admin-toggle input {
   width: 18px;
   height: 18px;
+}
+
+.consent-stack {
+  display: grid;
+  gap: 12px;
 }
 
 .pricing-rule-list {

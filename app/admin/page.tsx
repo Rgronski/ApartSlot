@@ -6,7 +6,9 @@ import { PricingRuleType } from "@prisma/client";
 import { APP_VERSION } from "@/lib/app-version";
 import { DomainError } from "@/lib/errors/domain-error";
 import { createApartment } from "@/services/admin/create-apartment";
+import { createCalendarBlock } from "@/services/admin/create-calendar-block";
 import { createPricingRule } from "@/services/admin/create-pricing-rule";
+import { deleteCalendarBlock } from "@/services/admin/delete-calendar-block";
 import { deletePricingRule } from "@/services/admin/delete-pricing-rule";
 import {
   formatDashboardMoney,
@@ -283,6 +285,47 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     );
   }
 
+  async function createCalendarBlockAction(formData: FormData) {
+    "use server";
+
+    try {
+      await createCalendarBlock({
+        apartmentId: readString(formData, "apartmentId"),
+        dateFrom: readString(formData, "dateFrom"),
+        dateTo: readString(formData, "dateTo"),
+        reason: readString(formData, "reason"),
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie zapisac blokady terminu. Sprobuj ponownie.";
+
+      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    redirect("/admin?status=block_created");
+  }
+
+  async function deleteCalendarBlockAction(formData: FormData) {
+    "use server";
+
+    try {
+      await deleteCalendarBlock(readString(formData, "calendarBlockId"));
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie usunac blokady terminu. Sprobuj ponownie.";
+
+      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    redirect("/admin?status=block_deleted");
+  }
+
   return (
     <main className="admin-shell">
       <section className="admin-hero">
@@ -343,6 +386,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         {status === "rule_deleted" ? (
           <div className="inline-notice inline-notice--success">
             <p>Regula cenowa zostala wylaczona.</p>
+          </div>
+        ) : null}
+
+        {status === "block_created" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Blokada terminu zostala zapisana.</p>
+          </div>
+        ) : null}
+
+        {status === "block_deleted" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Blokada terminu zostala usunieta.</p>
           </div>
         ) : null}
 
@@ -901,6 +956,41 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           ) : null}
                         </details>
 
+                        <details className="admin-details">
+                          <summary>Dodaj reczna blokade terminu</summary>
+
+                          <form action={createCalendarBlockAction} className="admin-form admin-form--nested">
+                            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+                            <div className="admin-form-grid admin-form-grid--compact">
+                              <label className="admin-field">
+                                <span>Data od</span>
+                                <input name="dateFrom" type="date" required />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Data do</span>
+                                <input name="dateTo" type="date" required />
+                              </label>
+                            </div>
+
+                            <label className="admin-field">
+                              <span>Powod blokady</span>
+                              <input
+                                name="reason"
+                                type="text"
+                                placeholder="Np. pobyt wlasciciela, serwis, remont"
+                              />
+                            </label>
+
+                            <div className="admin-form-actions">
+                              <button className="cta-button" type="submit">
+                                Zapisz blokade
+                              </button>
+                            </div>
+                          </form>
+                        </details>
+
                         <div className="pricing-rule-list">
                           <p className="pricing-rule-list-title">Aktywne reguly cenowe</p>
                           {apartment.pricingRules.length === 0 ? (
@@ -1010,6 +1100,38 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                             </div>
                           )}
                         </div>
+
+                        <div className="pricing-rule-list">
+                          <p className="pricing-rule-list-title">Reczne blokady terminow</p>
+                          {apartment.calendarBlocks.length === 0 ? (
+                            <p className="inline-meta">
+                              Brak recznych blokad dla tego apartamentu.
+                            </p>
+                          ) : (
+                            <div className="admin-stack">
+                              {apartment.calendarBlocks.map((block) => (
+                                <article className="pricing-rule-card" key={block.id}>
+                                  <div className="admin-row-top">
+                                    <div>
+                                      <h3>{block.dateFrom} - {block.dateTo}</h3>
+                                      <p>{block.reason ?? "Blokada reczna bez opisu"}</p>
+                                    </div>
+                                    <span className="status-badge status-badge--danger">
+                                      Zablokowane
+                                    </span>
+                                  </div>
+
+                                  <form action={deleteCalendarBlockAction} className="admin-inline-form">
+                                    <input name="calendarBlockId" type="hidden" value={block.id} />
+                                    <button className="cta-button cta-button--danger" type="submit">
+                                      Usun blokade
+                                    </button>
+                                  </form>
+                                </article>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </article>
                     ))}
                   </div>
@@ -1025,8 +1147,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 </div>
                 <ul className="admin-checklist">
                   <li>Rezerwacja reczna z poziomu panelu.</li>
-                  <li>Reczne blokady terminow bez wchodzenia do bazy.</li>
-                  <li>Podglad ceny z publicznego formularza rezerwacji.</li>
+                  <li>Podglad kalendarza miesiecznego dla apartamentu.</li>
+                  <li>Automatyczne maile i dodatkowe statusy operatora.</li>
                   <li>Docelowo logowanie administratora.</li>
                 </ul>
               </article>

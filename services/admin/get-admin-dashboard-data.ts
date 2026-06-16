@@ -55,6 +55,12 @@ type DashboardApartment = {
   defaultCheckOutTime: string | null;
   isActive: boolean;
   googleCalendarId: string | null;
+  calendarBlocks: {
+    id: string;
+    dateFrom: string;
+    dateTo: string;
+    reason: string | null;
+  }[];
   pricingRules: {
     id: string;
     name: string;
@@ -123,6 +129,12 @@ export async function getAdminDashboardData(
           createdAt: "asc",
         },
         include: {
+          calendarBlocks: {
+            orderBy: {
+              dateFrom: "asc",
+            },
+            take: 6,
+          },
           pricingRules: {
             where: {
               isActive: true,
@@ -288,6 +300,12 @@ export async function getAdminDashboardData(
         defaultCheckOutTime: apartment.defaultCheckOutTime,
         isActive: apartment.isActive,
         googleCalendarId: apartment.googleCalendarId,
+        calendarBlocks: apartment.calendarBlocks.map((block) => ({
+          id: block.id,
+          dateFrom: formatDate(block.dateFrom),
+          dateTo: formatDate(block.dateTo),
+          reason: block.reason,
+        })),
         pricingRules: apartment.pricingRules.map((rule) => ({
           id: rule.id,
           name: rule.name,
