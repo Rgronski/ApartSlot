@@ -78,10 +78,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       },
     });
   } catch (error) {
-    apartmentsError =
+    const rawMessage =
       error instanceof Error
         ? error.message
         : "Nie udalo sie pobrac apartamentow do formularza rezerwacji.";
+
+    apartmentsError = rawMessage.includes("max clients reached")
+      ? "Aplikacja chwilowo nie moze polaczyc sie z baza danych. To zwykle oznacza problem z konfiguracja polaczenia Supabase w Vercel."
+      : rawMessage;
   }
 
   async function createPublicReservationAction(formData: FormData) {
@@ -186,7 +190,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </div>
         ) : null}
 
-        {apartments.length === 0 ? (
+        {!apartmentsError && apartments.length === 0 ? (
           <div className="inline-notice">
             <p>Dodaj aktywny apartament w panelu admina, aby uruchomic rezerwacje online.</p>
           </div>
