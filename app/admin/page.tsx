@@ -7,11 +7,14 @@ import { APP_VERSION } from "@/lib/app-version";
 import { DomainError } from "@/lib/errors/domain-error";
 import { createApartment } from "@/services/admin/create-apartment";
 import { createPricingRule } from "@/services/admin/create-pricing-rule";
+import { deletePricingRule } from "@/services/admin/delete-pricing-rule";
 import {
   formatDashboardMoney,
   getAdminDashboardData,
 } from "@/services/admin/get-admin-dashboard-data";
+import { previewPricingCalculation } from "@/services/admin/preview-pricing-calculation";
 import { updateApartment } from "@/services/admin/update-apartment";
+import { updatePricingRule } from "@/services/admin/update-pricing-rule";
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Szkic",
@@ -75,6 +78,9 @@ type AdminPageProps = {
   searchParams?: Promise<{
     status?: string;
     message?: string;
+    previewApartmentId?: string;
+    previewCheckInDate?: string;
+    previewCheckOutDate?: string;
   }>;
 };
 
@@ -83,6 +89,28 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const dashboard = await getAdminDashboardData();
   const status = params?.status;
   const message = params?.message;
+  const previewApartmentId = params?.previewApartmentId;
+  const previewCheckInDate = params?.previewCheckInDate;
+  const previewCheckOutDate = params?.previewCheckOutDate;
+  let pricingPreview:
+    | Awaited<ReturnType<typeof previewPricingCalculation>>
+    | null = null;
+  let pricingPreviewError: string | null = null;
+
+  if (previewApartmentId && previewCheckInDate && previewCheckOutDate) {
+    try {
+      pricingPreview = await previewPricingCalculation(
+        previewApartmentId,
+        previewCheckInDate,
+        previewCheckOutDate,
+      );
+    } catch (error) {
+      pricingPreviewError =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie policzyc podgladu ceny.";
+    }
+  }
 
   async function createApartmentAction(formData: FormData) {
     "use server";
@@ -184,6 +212,77 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     redirect("/admin?status=rule_created");
   }
 
+  async function updatePricingRuleAction(formData: FormData) {
+    "use server";
+
+    const ruleTypeRaw = readString(formData, "ruleType");
+    const ruleType = Object.values(PricingRuleType).includes(
+      ruleTypeRaw as PricingRuleType,
+    )
+      ? (ruleTypeRaw as PricingRuleType)
+      : PricingRuleType.CUSTOM;
+
+    try {
+      await updatePricingRule({
+        pricingRuleId: readString(formData, "pricingRuleId"),
+        name: readString(formData, "name"),
+        ruleType,
+        dateFrom: readString(formData, "dateFrom"),
+        dateTo: readString(formData, "dateTo"),
+        pricePerNight: readNumber(formData, "pricePerNight"),
+        minimumNights: readOptionalNumber(formData, "minimumNights"),
+        priority: readOptionalNumber(formData, "priority") ?? 0,
+        isActive: readBoolean(formData, "isActive"),
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie zapisac reguly cenowej. Sprobuj ponownie.";
+
+      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    redirect("/admin?status=rule_updated");
+  }
+
+  async function deletePricingRuleAction(formData: FormData) {
+    "use server";
+
+    try {
+      await deletePricingRule(readString(formData, "pricingRuleId"));
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie wylaczyc reguly cenowej. Sprobuj ponownie.";
+
+      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    redirect("/admin?status=rule_deleted");
+  }
+
+  async function previewPricingRuleAction(formData: FormData) {
+    "use server";
+
+    const apartmentId = readString(formData, "apartmentId");
+    const checkInDate = readString(formData, "checkInDate");
+    const checkOutDate = readString(formData, "checkOutDate");
+
+    if (!apartmentId || !checkInDate || !checkOutDate) {
+      redirect(
+        `/admin?status=error&message=${encodeURIComponent("Uzupelnij termin, aby policzyc podglad ceny.")}`,
+      );
+    }
+
+    redirect(
+      `/admin?previewApartmentId=${encodeURIComponent(apartmentId)}&previewCheckInDate=${encodeURIComponent(checkInDate)}&previewCheckOutDate=${encodeURIComponent(checkOutDate)}`,
+    );
+  }
+
   return (
     <main className="admin-shell">
       <section className="admin-hero">
@@ -232,6 +331,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         {status === "rule_created" ? (
           <div className="inline-notice inline-notice--success">
             <p>Regula cenowa zostala dodana poprawnie.</p>
+          </div>
+        ) : null}
+
+        {status === "rule_updated" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Regula cenowa zostala zaktualizowana.</p>
+          </div>
+        ) : null}
+
+        {status === "rule_deleted" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Regula cenowa zostala wylaczona.</p>
           </div>
         ) : null}
 
@@ -695,6 +806,97 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           </form>
                         </details>
 
+                        <details className="admin-details">
+                          <summary>Sprawdz kalkulacje ceny</summary>
+
+                          <form action={previewPricingRuleAction} className="admin-form admin-form--nested">
+                            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+                            <div className="admin-form-grid admin-form-grid--compact">
+                              <label className="admin-field">
+                                <span>Przyjazd</span>
+                                <input
+                                  name="checkInDate"
+                                  type="date"
+                                  required
+                                  defaultValue={
+                                    previewApartmentId === apartment.id
+                                      ? previewCheckInDate ?? ""
+                                      : ""
+                                  }
+                                />
+                              </label>
+
+                              <label className="admin-field">
+                                <span>Wyjazd</span>
+                                <input
+                                  name="checkOutDate"
+                                  type="date"
+                                  required
+                                  defaultValue={
+                                    previewApartmentId === apartment.id
+                                      ? previewCheckOutDate ?? ""
+                                      : ""
+                                  }
+                                />
+                              </label>
+                            </div>
+
+                            <div className="admin-form-actions">
+                              <button className="cta-button" type="submit">
+                                Policz cene pobytu
+                              </button>
+                            </div>
+                          </form>
+
+                          {previewApartmentId === apartment.id && pricingPreviewError ? (
+                            <div className="inline-notice inline-notice--danger">
+                              <p>{pricingPreviewError}</p>
+                            </div>
+                          ) : null}
+
+                          {previewApartmentId === apartment.id && pricingPreview ? (
+                            <article className="pricing-preview-card">
+                              <h3>Podglad kalkulacji</h3>
+                              <p className="inline-meta">
+                                Nocy: {pricingPreview.nightsCount}
+                              </p>
+                              <p className="inline-meta">
+                                Noclegi: {formatDashboardMoney(pricingPreview.accommodationAmount, pricingPreview.currency)}
+                              </p>
+                              <p className="inline-meta">
+                                Sprzatanie: {formatDashboardMoney(pricingPreview.cleaningFee, pricingPreview.currency)}
+                              </p>
+                              <p className="inline-meta">
+                                Kaucja: {formatDashboardMoney(pricingPreview.depositAmount, pricingPreview.currency)}
+                              </p>
+                              <p className="inline-meta pricing-preview-total">
+                                Razem: {formatDashboardMoney(pricingPreview.totalAmount, pricingPreview.currency)}
+                              </p>
+
+                              <div className="admin-stack">
+                                {pricingPreview.nightlyBreakdown.map((night) => (
+                                  <article className="pricing-preview-night" key={night.date}>
+                                    <div className="admin-row-top">
+                                      <div>
+                                        <h3>{night.date}</h3>
+                                        <p>
+                                          {night.source === "pricing_rule"
+                                            ? `Regula: ${night.pricingRuleName ?? "specjalna cena"}`
+                                            : "Cena bazowa"}
+                                        </p>
+                                      </div>
+                                      <span className="status-badge status-badge--warning">
+                                        {formatDashboardMoney(night.pricePerNight, pricingPreview.currency)}
+                                      </span>
+                                    </div>
+                                  </article>
+                                ))}
+                              </div>
+                            </article>
+                          ) : null}
+                        </details>
+
                         <div className="pricing-rule-list">
                           <p className="pricing-rule-list-title">Aktywne reguly cenowe</p>
                           {apartment.pricingRules.length === 0 ? (
@@ -727,6 +929,78 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                       Regula weekendowa dziala dla piatku i soboty.
                                     </p>
                                   ) : null}
+
+                                  <details className="admin-details admin-details--flat">
+                                    <summary>Edytuj te regule</summary>
+
+                                    <form action={updatePricingRuleAction} className="admin-form admin-form--nested">
+                                      <input name="pricingRuleId" type="hidden" value={rule.id} />
+
+                                      <div className="admin-form-grid">
+                                        <label className="admin-field">
+                                          <span>Nazwa reguly</span>
+                                          <input name="name" type="text" required defaultValue={rule.name} />
+                                        </label>
+
+                                        <label className="admin-field">
+                                          <span>Typ reguly</span>
+                                          <select name="ruleType" defaultValue={rule.ruleType}>
+                                            <option value={PricingRuleType.SEASONAL}>Sezon</option>
+                                            <option value={PricingRuleType.WEEKEND}>Weekend</option>
+                                            <option value={PricingRuleType.EVENT}>Event</option>
+                                            <option value={PricingRuleType.CUSTOM}>Wlasna</option>
+                                          </select>
+                                        </label>
+
+                                        <label className="admin-field">
+                                          <span>Data od</span>
+                                          <input name="dateFrom" type="date" required defaultValue={rule.dateFrom} />
+                                        </label>
+
+                                        <label className="admin-field">
+                                          <span>Data do</span>
+                                          <input name="dateTo" type="date" required defaultValue={rule.dateTo} />
+                                        </label>
+
+                                        <label className="admin-field">
+                                          <span>Cena za noc (PLN)</span>
+                                          <input name="pricePerNight" type="number" min="0" step="0.01" required defaultValue={String(rule.pricePerNight)} />
+                                        </label>
+
+                                        <label className="admin-field">
+                                          <span>Minimalna liczba nocy</span>
+                                          <input name="minimumNights" type="number" min="1" step="1" defaultValue={rule.minimumNights ?? ""} />
+                                        </label>
+
+                                        <label className="admin-field">
+                                          <span>Priorytet</span>
+                                          <input name="priority" type="number" min="0" step="1" required defaultValue={String(rule.priority)} />
+                                        </label>
+                                      </div>
+
+                                      <label className="admin-toggle">
+                                        <input
+                                          name="isActive"
+                                          type="checkbox"
+                                          defaultChecked={rule.isActive}
+                                        />
+                                        <span>Regula jest aktywna</span>
+                                      </label>
+
+                                      <div className="admin-form-actions">
+                                        <button className="cta-button" type="submit">
+                                          Zapisz regule
+                                        </button>
+                                      </div>
+                                    </form>
+
+                                    <form action={deletePricingRuleAction} className="admin-inline-form">
+                                      <input name="pricingRuleId" type="hidden" value={rule.id} />
+                                      <button className="cta-button cta-button--danger" type="submit">
+                                        Wylacz te regule
+                                      </button>
+                                    </form>
+                                  </details>
                                 </article>
                               ))}
                             </div>
@@ -748,7 +1022,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <ul className="admin-checklist">
                   <li>Rezerwacja reczna z poziomu panelu.</li>
                   <li>Reczne blokady terminow bez wchodzenia do bazy.</li>
-                  <li>Edycja i usuwanie istniejacych regul cenowych.</li>
+                  <li>Podglad ceny z publicznego formularza rezerwacji.</li>
                   <li>Docelowo logowanie administratora.</li>
                 </ul>
               </article>

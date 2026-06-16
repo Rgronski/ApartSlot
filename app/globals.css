@@ -341,6 +341,10 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.admin-form-grid--compact {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
 .admin-field {
   display: grid;
   gap: 8px;
@@ -393,6 +397,11 @@ a {
   margin-bottom: 8px;
 }
 
+.admin-details--flat {
+  margin-top: 14px;
+  background: rgba(255, 252, 247, 0.72);
+}
+
 .admin-toggle {
   display: flex;
   align-items: center;
@@ -423,6 +432,45 @@ a {
   border: 1px solid var(--border);
   border-radius: 18px;
   background: rgba(255, 248, 236, 0.7);
+}
+
+.pricing-preview-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 248, 236, 0.78);
+}
+
+.pricing-preview-card h3,
+.pricing-preview-night h3,
+.pricing-preview-night h4 {
+  margin: 0;
+}
+
+.pricing-preview-total {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+.pricing-preview-night {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 252, 247, 0.88);
+}
+
+.admin-inline-form {
+  margin-top: 12px;
+}
+
+.cta-button--danger {
+  color: #9f3820;
+  background: rgba(255, 242, 239, 0.95);
+}
+
+.cta-button--danger:hover {
+  background: rgba(255, 232, 227, 1);
 }
 
 .admin-form-actions {
