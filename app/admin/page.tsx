@@ -279,7 +279,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     }
 
     redirect(
-      `/admin?previewApartmentId=${encodeURIComponent(apartmentId)}&previewCheckInDate=${encodeURIComponent(checkInDate)}&previewCheckOutDate=${encodeURIComponent(checkOutDate)}`,
+      `/admin?previewApartmentId=${encodeURIComponent(apartmentId)}&previewCheckInDate=${encodeURIComponent(checkInDate)}&previewCheckOutDate=${encodeURIComponent(checkOutDate)}#pricing-preview-${encodeURIComponent(apartmentId)}`,
     );
   }
 
@@ -809,6 +809,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <details
                           className="admin-details"
                           open={previewApartmentId === apartment.id}
+                          id={`pricing-preview-${apartment.id}`}
                         >
                           <summary>Sprawdz kalkulacje ceny</summary>
 
@@ -859,7 +860,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           ) : null}
 
                           {previewApartmentId === apartment.id && pricingPreview ? (
-                            <article className="pricing-preview-card">
+                            <article className="pricing-preview-card pricing-preview-card--active">
                               <h3>Podglad kalkulacji</h3>
                               <p className="inline-meta">
                                 Nocy: {pricingPreview.nightsCount}

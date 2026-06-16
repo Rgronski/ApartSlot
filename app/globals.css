@@ -402,6 +402,10 @@ a {
   background: rgba(255, 252, 247, 0.72);
 }
 
+.admin-details:target {
+  scroll-margin-top: 28px;
+}
+
 .admin-toggle {
   display: flex;
   align-items: center;
@@ -440,6 +444,12 @@ a {
   border: 1px solid var(--border);
   border-radius: 18px;
   background: rgba(255, 248, 236, 0.78);
+}
+
+.pricing-preview-card--active {
+  border-color: rgba(189, 123, 48, 0.45);
+  box-shadow: 0 0 0 4px rgba(189, 123, 48, 0.12);
+  background: linear-gradient(180deg, rgba(255, 245, 227, 0.98), rgba(255, 250, 242, 0.94));
 }
 
 .pricing-preview-card h3,
