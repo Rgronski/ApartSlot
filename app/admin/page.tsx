@@ -254,6 +254,17 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </section>
       ) : (
         <>
+          {dashboard.warningMessage ? (
+            <section className="admin-card admin-state-card">
+              <h2>Panel dziala czesciowo</h2>
+              <p>{dashboard.warningMessage}</p>
+              <p>
+                Formularz i lista apartamentow sa aktywne. Sekcje rezerwacji i
+                platnosci dopinamy osobno.
+              </p>
+            </section>
+          ) : null}
+
           <section className="admin-metrics">
             {dashboard.metrics.map((metric) => (
               <article className="admin-card metric-card" key={metric.label}>

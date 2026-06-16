@@ -49,6 +49,7 @@ export type AdminDashboardData =
       recentReservations: DashboardReservation[];
       attentionPayments: DashboardAttentionPayment[];
       apartments: DashboardApartment[];
+      warningMessage?: string;
     }
   | {
       state: "missing_database";
@@ -83,70 +84,11 @@ export async function getAdminDashboardData(
   }
 
   try {
-    const [
-      apartmentCount,
-      activeApartmentCount,
-      pendingReservationCount,
-      confirmedReservationCount,
-      pendingPaymentCount,
-      recentReservations,
-      attentionPayments,
-      apartments,
-    ] = await Promise.all([
+    const [apartmentCount, activeApartmentCount, apartments] = await Promise.all([
       db.apartment.count(),
       db.apartment.count({
         where: {
           isActive: true,
-        },
-      }),
-      db.reservation.count({
-        where: {
-          status: ReservationStatus.PENDING_PAYMENT,
-        },
-      }),
-      db.reservation.count({
-        where: {
-          status: ReservationStatus.CONFIRMED,
-        },
-      }),
-      db.payment.count({
-        where: {
-          status: {
-            in: [PaymentStatus.CREATED, PaymentStatus.LINK_SENT, PaymentStatus.PENDING],
-          },
-        },
-      }),
-      db.reservation.findMany({
-        take: 6,
-        orderBy: {
-          createdAt: "desc",
-        },
-        include: {
-          apartment: true,
-          guest: true,
-        },
-      }),
-      db.payment.findMany({
-        take: 6,
-        orderBy: [
-          {
-            paymentExpiresAt: "asc",
-          },
-          {
-            createdAt: "desc",
-          },
-        ],
-        where: {
-          status: {
-            in: [PaymentStatus.CREATED, PaymentStatus.LINK_SENT, PaymentStatus.PENDING],
-          },
-        },
-        include: {
-          reservation: {
-            include: {
-              guest: true,
-            },
-          },
         },
       }),
       db.apartment.findMany({
@@ -157,31 +99,77 @@ export async function getAdminDashboardData(
       }),
     ]);
 
-    return {
-      state: "ready",
-      metrics: [
-        {
-          label: "Apartamenty",
-          value: String(apartmentCount),
-          hint: `${activeApartmentCount} aktywne do sprzedazy`,
-        },
-        {
-          label: "Rezerwacje oczekujace",
-          value: String(pendingReservationCount),
-          hint: "Klienci czekaja na platnosc lub jej potwierdzenie",
-        },
-        {
-          label: "Rezerwacje potwierdzone",
-          value: String(confirmedReservationCount),
-          hint: "Te pobyty sa juz zamkniete po stronie sprzedazy",
-        },
-        {
-          label: "Platnosci do dopilnowania",
-          value: String(pendingPaymentCount),
-          hint: "Link wyslany lub platnosc nadal w toku",
-        },
-      ],
-      recentReservations: recentReservations.map((reservation) => ({
+    let pendingReservationCount = 0;
+    let confirmedReservationCount = 0;
+    let pendingPaymentCount = 0;
+    let recentReservations: DashboardReservation[] = [];
+    let attentionPayments: DashboardAttentionPayment[] = [];
+    let warningMessage: string | undefined;
+
+    try {
+      const [
+        pendingReservations,
+        confirmedReservations,
+        pendingPayments,
+        reservations,
+        payments,
+      ] = await Promise.all([
+        db.reservation.count({
+          where: {
+            status: ReservationStatus.PENDING_PAYMENT,
+          },
+        }),
+        db.reservation.count({
+          where: {
+            status: ReservationStatus.CONFIRMED,
+          },
+        }),
+        db.payment.count({
+          where: {
+            status: {
+              in: [PaymentStatus.CREATED, PaymentStatus.LINK_SENT, PaymentStatus.PENDING],
+            },
+          },
+        }),
+        db.reservation.findMany({
+          take: 6,
+          orderBy: {
+            createdAt: "desc",
+          },
+          include: {
+            apartment: true,
+            guest: true,
+          },
+        }),
+        db.payment.findMany({
+          take: 6,
+          orderBy: [
+            {
+              paymentExpiresAt: "asc",
+            },
+            {
+              createdAt: "desc",
+            },
+          ],
+          where: {
+            status: {
+              in: [PaymentStatus.CREATED, PaymentStatus.LINK_SENT, PaymentStatus.PENDING],
+            },
+          },
+          include: {
+            reservation: {
+              include: {
+                guest: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+      pendingReservationCount = pendingReservations;
+      confirmedReservationCount = confirmedReservations;
+      pendingPaymentCount = pendingPayments;
+      recentReservations = reservations.map((reservation) => ({
         id: reservation.id,
         reservationNumber: reservation.reservationNumber,
         apartmentName: reservation.apartment.name,
@@ -194,8 +182,8 @@ export async function getAdminDashboardData(
         amountToPayNow: Number(reservation.amountToPayNow),
         currency: reservation.currency,
         createdAt: formatDateTime(reservation.createdAt),
-      })),
-      attentionPayments: attentionPayments.map((payment) => ({
+      }));
+      attentionPayments = payments.map((payment) => ({
         id: payment.id,
         reservationNumber: payment.reservation.reservationNumber,
         guestName: `${payment.reservation.guest.firstName} ${payment.reservation.guest.lastName}`,
@@ -204,7 +192,44 @@ export async function getAdminDashboardData(
         status: payment.status,
         expiresAt: payment.paymentExpiresAt ? formatDateTime(payment.paymentExpiresAt) : null,
         paymentUrl: payment.paymentUrl,
-      })),
+      }));
+    } catch {
+      warningMessage =
+        "Czesc dashboardu dotyczaca rezerwacji i platnosci jest jeszcze w konfiguracji. Apartamenty dzialaja poprawnie.";
+    }
+
+    return {
+      state: "ready",
+      metrics: [
+        {
+          label: "Apartamenty",
+          value: String(apartmentCount),
+          hint: `${activeApartmentCount} aktywne do sprzedazy`,
+        },
+        {
+          label: "Rezerwacje oczekujace",
+          value: String(pendingReservationCount),
+          hint: warningMessage
+            ? "Sekcja czasowo niedostepna podczas konfiguracji dashboardu"
+            : "Klienci czekaja na platnosc lub jej potwierdzenie",
+        },
+        {
+          label: "Rezerwacje potwierdzone",
+          value: String(confirmedReservationCount),
+          hint: warningMessage
+            ? "Sekcja czasowo niedostepna podczas konfiguracji dashboardu"
+            : "Te pobyty sa juz zamkniete po stronie sprzedazy",
+        },
+        {
+          label: "Platnosci do dopilnowania",
+          value: String(pendingPaymentCount),
+          hint: warningMessage
+            ? "Sekcja czasowo niedostepna podczas konfiguracji dashboardu"
+            : "Link wyslany lub platnosc nadal w toku",
+        },
+      ],
+      recentReservations,
+      attentionPayments,
       apartments: apartments.map((apartment) => ({
         id: apartment.id,
         name: apartment.name,
@@ -212,6 +237,7 @@ export async function getAdminDashboardData(
         isActive: apartment.isActive,
         googleCalendarId: apartment.googleCalendarId,
       })),
+      warningMessage,
     };
   } catch (error) {
     const message =
