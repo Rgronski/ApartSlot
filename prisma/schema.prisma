@@ -16,6 +16,8 @@ enum ReservationStatus {
   EXPIRED
   MANUAL_BLOCK
   COMPLETED
+
+  @@map("reservation_status")
 }
 
 enum PaymentStatus {
@@ -27,6 +29,8 @@ enum PaymentStatus {
   CANCELLED
   EXPIRED
   REFUNDED
+
+  @@map("payment_status")
 }
 
 enum ReservationSource {
@@ -40,6 +44,8 @@ enum ReservationSource {
   AIRBNB
   MANUAL
   OTHER
+
+  @@map("reservation_source")
 }
 
 enum PaymentProvider {
@@ -49,6 +55,8 @@ enum PaymentProvider {
   TPAY
   MANUAL_TRANSFER
   OTHER
+
+  @@map("payment_provider")
 }
 
 enum PricingRuleType {
@@ -56,18 +64,24 @@ enum PricingRuleType {
   WEEKEND
   EVENT
   CUSTOM
+
+  @@map("pricing_rule_type")
 }
 
 enum EmailLogStatus {
   PENDING
   SENT
   FAILED
+
+  @@map("email_log_status")
 }
 
 enum AdminUserRole {
   ADMIN
   MANAGER
   STAFF
+
+  @@map("admin_user_role")
 }
 
 model Apartment {
