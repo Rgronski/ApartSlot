@@ -41,6 +41,23 @@ const pricingRuleTypeLabels: Record<PricingRuleType, string> = {
   CUSTOM: "Wlasna",
 };
 
+const monthNames = [
+  "styczen",
+  "luty",
+  "marzec",
+  "kwiecien",
+  "maj",
+  "czerwiec",
+  "lipiec",
+  "sierpien",
+  "wrzesien",
+  "pazdziernik",
+  "listopad",
+  "grudzien",
+];
+
+const weekDayLabels = ["Pn", "Wt", "Sr", "Cz", "Pt", "So", "Nd"];
+
 function getBadgeClass(status: string) {
   if (status === "CONFIRMED" || status === "PAID" || status === "COMPLETED") {
     return "status-badge status-badge--success";
@@ -76,6 +93,43 @@ function readBoolean(formData: FormData, key: string) {
   return formData.get(key) === "on";
 }
 
+function toIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function getMonthCalendarDays() {
+  const today = new Date();
+  const monthStart = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
+  );
+  const monthEnd = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0),
+  );
+  const startWeekday = (monthStart.getUTCDay() + 6) % 7;
+  const gridStart = addDays(monthStart, -startWeekday);
+  const days: { isoDate: string; dayNumber: number; isCurrentMonth: boolean }[] = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const current = addDays(gridStart, index);
+    days.push({
+      isoDate: toIsoDate(current),
+      dayNumber: current.getUTCDate(),
+      isCurrentMonth: current >= monthStart && current <= monthEnd,
+    });
+  }
+
+  return {
+    monthLabel: `${monthNames[monthStart.getUTCMonth()]} ${monthStart.getUTCFullYear()}`,
+    days,
+  };
+}
+
 type AdminPageProps = {
   searchParams?: Promise<{
     status?: string;
@@ -89,6 +143,7 @@ type AdminPageProps = {
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = searchParams ? await searchParams : undefined;
   const dashboard = await getAdminDashboardData();
+  const monthCalendar = getMonthCalendarDays();
   const status = params?.status;
   const message = params?.message;
   const previewApartmentId = params?.previewApartmentId;
@@ -350,13 +405,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Apartamenty</p>
-            <h2>Dodaj nowy apartament</h2>
+            <h2>Kalendarz zajetosci</h2>
           </div>
         </div>
 
         <p>
-          Ten formularz sluzy do samodzielnego dodawania kolejnych obiektow do
-          systemu. Po zapisie apartament pojawi sie od razu na liscie w panelu.
+          Tutaj widzisz biezacy miesiac i szybko sprawdzisz, ktore dni sa juz
+          zajete przez rezerwacje lub reczne blokady.
         </p>
 
         {status === "created" ? (
@@ -407,112 +462,180 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
         ) : null}
 
-        <form action={createApartmentAction} className="admin-form">
-          <div className="admin-form-grid">
-            <label className="admin-field">
-              <span>Nazwa apartamentu</span>
-              <input name="name" type="text" required placeholder="Np. Apartament Centrum" />
-            </label>
-
-            <label className="admin-field">
-              <span>Slug</span>
-              <input
-                name="slug"
-                type="text"
-                placeholder="Np. apartament-centrum"
-              />
-            </label>
-
-            <label className="admin-field">
-              <span>Miasto</span>
-              <input name="city" type="text" placeholder="Np. Warszawa" />
-            </label>
-
-            <label className="admin-field">
-              <span>Adres</span>
-              <input name="address" type="text" placeholder="Adres lub opis lokalizacji" />
-            </label>
-
-            <label className="admin-field">
-              <span>Maksymalna liczba gosci</span>
-              <input name="maxGuests" type="number" min="1" step="1" required defaultValue="2" />
-            </label>
-
-            <label className="admin-field">
-              <span>Cena za noc (PLN)</span>
-              <input
-                name="basePricePerNight"
-                type="number"
-                min="0"
-                step="0.01"
-                required
-                defaultValue="350"
-              />
-            </label>
-
-            <label className="admin-field">
-              <span>Oplata za sprzatanie (PLN)</span>
-              <input
-                name="cleaningFee"
-                type="number"
-                min="0"
-                step="0.01"
-                required
-                defaultValue="120"
-              />
-            </label>
-
-            <label className="admin-field">
-              <span>Kaucja (PLN)</span>
-              <input
-                name="depositAmount"
-                type="number"
-                min="0"
-                step="0.01"
-                required
-                defaultValue="500"
-              />
-            </label>
-
-            <label className="admin-field">
-              <span>Minimalna liczba nocy</span>
-              <input name="minimumNights" type="number" min="1" step="1" required defaultValue="1" />
-            </label>
-
-            <label className="admin-field">
-              <span>Godzina check-in</span>
-              <input name="defaultCheckInTime" type="text" placeholder="15:00" defaultValue="15:00" />
-            </label>
-
-            <label className="admin-field">
-              <span>Godzina check-out</span>
-              <input name="defaultCheckOutTime" type="text" placeholder="11:00" defaultValue="11:00" />
-            </label>
-
-            <label className="admin-field">
-              <span>Google Calendar ID</span>
-              <input name="googleCalendarId" type="text" placeholder="Opcjonalnie" />
-            </label>
+        {dashboard.apartments.length === 0 ? (
+          <div className="inline-notice">
+            <p>Dodaj pierwszy apartament, aby uruchomic kalendarz zajetosci.</p>
           </div>
+        ) : (
+          <div className="admin-stack">
+            {dashboard.apartments.map((apartment) => {
+              const occupancyByDate = new Map(
+                apartment.occupancyDates.map((item) => [item.date, item]),
+              );
 
-          <label className="admin-field">
-            <span>Opis</span>
-            <textarea
-              name="description"
-              rows={4}
-              placeholder="Krotki opis apartamentu, lokalizacji lub standardu."
-            />
-          </label>
+              return (
+                <article className="calendar-card" key={`calendar-${apartment.id}`}>
+                  <div className="calendar-card-header">
+                    <div>
+                      <h3>{apartment.name}</h3>
+                      <p>{apartment.city ?? "Miasto nieuzupelnione"}</p>
+                    </div>
+                    <span className="calendar-month-chip">{monthCalendar.monthLabel}</span>
+                  </div>
 
-          <div className="admin-form-actions">
-            <button className="cta-button" type="submit">
-              Zapisz apartament
-            </button>
-            <p className="admin-form-note">
-              Jesli slug zostawisz pusty, system zbuduje go automatycznie z nazwy.
-            </p>
+                  <div className="calendar-grid-labels">
+                    {weekDayLabels.map((label) => (
+                      <span key={`${apartment.id}-${label}`}>{label}</span>
+                    ))}
+                  </div>
+
+                  <div className="calendar-grid">
+                    {monthCalendar.days.map((day) => {
+                      const occupied = occupancyByDate.get(day.isoDate);
+
+                      return (
+                        <div
+                          className={[
+                            "calendar-day",
+                            day.isCurrentMonth ? "" : "calendar-day--muted",
+                            occupied
+                              ? occupied.source === "calendar_block"
+                                ? "calendar-day--blocked"
+                                : "calendar-day--reserved"
+                              : "calendar-day--free",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          key={`${apartment.id}-${day.isoDate}`}
+                          title={occupied ? `${day.isoDate} | ${occupied.label}` : `${day.isoDate} | Wolny termin`}
+                        >
+                          <span>{day.dayNumber}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="calendar-legend">
+                    <span><i className="calendar-dot calendar-dot--free" /> Wolne</span>
+                    <span><i className="calendar-dot calendar-dot--reserved" /> Rezerwacja</span>
+                    <span><i className="calendar-dot calendar-dot--blocked" /> Blokada reczna</span>
+                  </div>
+                </article>
+              );
+            })}
           </div>
-        </form>
+        )}
+
+        <details className="admin-details admin-details--top-form">
+          <summary>Dodaj apartament</summary>
+
+          <form action={createApartmentAction} className="admin-form admin-form--nested">
+            <div className="admin-form-grid">
+              <label className="admin-field">
+                <span>Nazwa apartamentu</span>
+                <input name="name" type="text" required placeholder="Np. Apartament Centrum" />
+              </label>
+
+              <label className="admin-field">
+                <span>Slug</span>
+                <input
+                  name="slug"
+                  type="text"
+                  placeholder="Np. apartament-centrum"
+                />
+              </label>
+
+              <label className="admin-field">
+                <span>Miasto</span>
+                <input name="city" type="text" placeholder="Np. Warszawa" />
+              </label>
+
+              <label className="admin-field">
+                <span>Adres</span>
+                <input name="address" type="text" placeholder="Adres lub opis lokalizacji" />
+              </label>
+
+              <label className="admin-field">
+                <span>Maksymalna liczba gosci</span>
+                <input name="maxGuests" type="number" min="1" step="1" required defaultValue="2" />
+              </label>
+
+              <label className="admin-field">
+                <span>Cena za noc (PLN)</span>
+                <input
+                  name="basePricePerNight"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  defaultValue="350"
+                />
+              </label>
+
+              <label className="admin-field">
+                <span>Oplata za sprzatanie (PLN)</span>
+                <input
+                  name="cleaningFee"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  defaultValue="120"
+                />
+              </label>
+
+              <label className="admin-field">
+                <span>Kaucja (PLN)</span>
+                <input
+                  name="depositAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  defaultValue="500"
+                />
+              </label>
+
+              <label className="admin-field">
+                <span>Minimalna liczba nocy</span>
+                <input name="minimumNights" type="number" min="1" step="1" required defaultValue="1" />
+              </label>
+
+              <label className="admin-field">
+                <span>Godzina check-in</span>
+                <input name="defaultCheckInTime" type="text" placeholder="15:00" defaultValue="15:00" />
+              </label>
+
+              <label className="admin-field">
+                <span>Godzina check-out</span>
+                <input name="defaultCheckOutTime" type="text" placeholder="11:00" defaultValue="11:00" />
+              </label>
+
+              <label className="admin-field">
+                <span>Google Calendar ID</span>
+                <input name="googleCalendarId" type="text" placeholder="Opcjonalnie" />
+              </label>
+            </div>
+
+            <label className="admin-field">
+              <span>Opis</span>
+              <textarea
+                name="description"
+                rows={4}
+                placeholder="Krotki opis apartamentu, lokalizacji lub standardu."
+              />
+            </label>
+
+            <div className="admin-form-actions">
+              <button className="cta-button" type="submit">
+                Zapisz apartament
+              </button>
+              <p className="admin-form-note">
+                Jesli slug zostawisz pusty, system zbuduje go automatycznie z nazwy.
+              </p>
+            </div>
+          </form>
+        </details>
       </section>
 
       {dashboard.state !== "ready" ? (

@@ -61,6 +61,11 @@ type DashboardApartment = {
     dateTo: string;
     reason: string | null;
   }[];
+  occupancyDates: {
+    date: string;
+    source: "reservation" | "calendar_block";
+    label: string;
+  }[];
   pricingRules: {
     id: string;
     name: string;
@@ -104,6 +109,68 @@ function formatMoney(value: number, currency: string) {
   return `${value.toFixed(2)} ${currency}`;
 }
 
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function buildOccupancyDates(
+  reservations: {
+    checkInDate: Date;
+    checkOutDate: Date;
+    reservationNumber: string;
+  }[],
+  calendarBlocks: {
+    dateFrom: Date;
+    dateTo: Date;
+    reason: string | null;
+  }[],
+) {
+  const occupancyMap = new Map<
+    string,
+    {
+      date: string;
+      source: "reservation" | "calendar_block";
+      label: string;
+    }
+  >();
+
+  for (const reservation of reservations) {
+    for (
+      let cursor = new Date(reservation.checkInDate);
+      cursor < reservation.checkOutDate;
+      cursor = addDays(cursor, 1)
+    ) {
+      const isoDate = formatDate(cursor);
+      occupancyMap.set(isoDate, {
+        date: isoDate,
+        source: "reservation",
+        label: `Rezerwacja ${reservation.reservationNumber}`,
+      });
+    }
+  }
+
+  for (const block of calendarBlocks) {
+    for (
+      let cursor = new Date(block.dateFrom);
+      cursor <= block.dateTo;
+      cursor = addDays(cursor, 1)
+    ) {
+      const isoDate = formatDate(cursor);
+      occupancyMap.set(isoDate, {
+        date: isoDate,
+        source: "calendar_block",
+        label: block.reason ?? "Blokada reczna",
+      });
+    }
+  }
+
+  return Array.from(occupancyMap.values()).sort((left, right) =>
+    left.date.localeCompare(right.date),
+  );
+}
+
 export async function getAdminDashboardData(
   db: PrismaClient = prisma,
 ): Promise<AdminDashboardData> {
@@ -116,6 +183,14 @@ export async function getAdminDashboardData(
   }
 
   try {
+    const today = new Date();
+    const monthStart = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
+    );
+    const monthEnd = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0),
+    );
+
     const [apartmentCount, activeApartmentCount, apartments] = await Promise.all([
       db.apartment.count(),
       db.apartment.count({
@@ -129,7 +204,37 @@ export async function getAdminDashboardData(
           createdAt: "asc",
         },
         include: {
+          reservations: {
+            where: {
+              status: {
+                in: [
+                  ReservationStatus.PENDING_PAYMENT,
+                  ReservationStatus.CONFIRMED,
+                  ReservationStatus.MANUAL_BLOCK,
+                ],
+              },
+              checkInDate: {
+                lte: monthEnd,
+              },
+              checkOutDate: {
+                gt: monthStart,
+              },
+            },
+            select: {
+              reservationNumber: true,
+              checkInDate: true,
+              checkOutDate: true,
+            },
+          },
           calendarBlocks: {
+            where: {
+              dateFrom: {
+                lte: monthEnd,
+              },
+              dateTo: {
+                gte: monthStart,
+              },
+            },
             orderBy: {
               dateFrom: "asc",
             },
@@ -306,6 +411,10 @@ export async function getAdminDashboardData(
           dateTo: formatDate(block.dateTo),
           reason: block.reason,
         })),
+        occupancyDates: buildOccupancyDates(
+          apartment.reservations,
+          apartment.calendarBlocks,
+        ),
         pricingRules: apartment.pricingRules.map((rule) => ({
           id: rule.id,
           name: rule.name,

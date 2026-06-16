@@ -185,6 +185,128 @@ a {
   margin-top: 24px;
 }
 
+.calendar-card {
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: rgba(255, 250, 242, 0.84);
+}
+
+.calendar-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.calendar-card-header h3,
+.calendar-card-header p {
+  margin: 0;
+}
+
+.calendar-card-header p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.calendar-month-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 245, 227, 0.96);
+  color: var(--accent-dark);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.calendar-grid-labels,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-grid-labels {
+  margin-bottom: 8px;
+}
+
+.calendar-grid-labels span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.calendar-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 252, 247, 0.92);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.calendar-day--muted {
+  opacity: 0.36;
+}
+
+.calendar-day--free {
+  background: rgba(255, 252, 247, 0.92);
+}
+
+.calendar-day--reserved {
+  background: rgba(243, 236, 213, 0.98);
+  border-color: rgba(180, 114, 10, 0.18);
+  color: #9d5b00;
+}
+
+.calendar-day--blocked {
+  background: rgba(255, 236, 231, 0.98);
+  border-color: rgba(166, 64, 41, 0.18);
+  color: #9f3820;
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.calendar-dot--free {
+  background: rgba(255, 252, 247, 0.92);
+}
+
+.calendar-dot--reserved {
+  background: rgba(243, 236, 213, 0.98);
+}
+
+.calendar-dot--blocked {
+  background: rgba(255, 236, 231, 0.98);
+}
+
 .admin-metrics {
   display: grid;
   gap: 20px;
@@ -404,6 +526,10 @@ a {
 .admin-details--flat {
   margin-top: 14px;
   background: rgba(255, 252, 247, 0.72);
+}
+
+.admin-details--top-form {
+  margin-top: 24px;
 }
 
 .admin-details:target {
