@@ -1,3 +1,5 @@
+import { APP_VERSION } from "@/lib/app-version";
+
 const nextSteps = [
   "Dodac modele danych i schemat bazy Prisma.",
   "Zaimplementowac logike dostepnosci terminow.",
@@ -9,6 +11,7 @@ export default function HomePage() {
     <main className="page-shell">
       <section className="hero-card">
         <p className="eyebrow">MVP start</p>
+        <p className="version-chip">Wersja {APP_VERSION}</p>
         <h1>System rezerwacji apartamentu</h1>
         <p className="lead">
           Projekt zostal przygotowany jako fundament pod rezerwacje online,

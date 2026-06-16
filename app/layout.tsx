@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { APP_VERSION } from "@/lib/app-version";
 
 export const metadata: Metadata = {
   title: "Rezerwacje apartamentu",
@@ -13,7 +14,10 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="pl">
-      <body>{children}</body>
+      <body>
+        {children}
+        <div className="app-version-badge">Wersja {APP_VERSION}</div>
+      </body>
     </html>
   );
 }

@@ -71,6 +71,32 @@ a {
   text-transform: uppercase;
 }
 
+.version-chip,
+.app-version-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 250, 242, 0.92);
+  color: var(--accent-dark);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.version-chip {
+  margin: 0 0 18px;
+}
+
+.app-version-badge {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 20;
+  box-shadow: 0 10px 30px rgba(56, 38, 19, 0.12);
+}
+
 .lead {
   max-width: 58ch;
   color: var(--muted);
