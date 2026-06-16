@@ -806,7 +806,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           </form>
                         </details>
 
-                        <details className="admin-details">
+                        <details
+                          className="admin-details"
+                          open={previewApartmentId === apartment.id}
+                        >
                           <summary>Sprawdz kalkulacje ceny</summary>
 
                           <form action={previewPricingRuleAction} className="admin-form admin-form--nested">
