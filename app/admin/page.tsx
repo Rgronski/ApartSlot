@@ -462,67 +462,73 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
         ) : null}
 
-        {dashboard.apartments.length === 0 ? (
-          <div className="inline-notice">
-            <p>Dodaj pierwszy apartament, aby uruchomic kalendarz zajetosci.</p>
-          </div>
-        ) : (
-          <div className="admin-stack">
-            {dashboard.apartments.map((apartment) => {
-              const occupancyByDate = new Map(
-                apartment.occupancyDates.map((item) => [item.date, item]),
-              );
+        {dashboard.state === "ready" ? (
+          dashboard.apartments.length === 0 ? (
+            <div className="inline-notice">
+              <p>Dodaj pierwszy apartament, aby uruchomic kalendarz zajetosci.</p>
+            </div>
+          ) : (
+            <div className="admin-stack">
+              {dashboard.apartments.map((apartment) => {
+                const occupancyByDate = new Map(
+                  apartment.occupancyDates.map((item) => [item.date, item]),
+                );
 
-              return (
-                <article className="calendar-card" key={`calendar-${apartment.id}`}>
-                  <div className="calendar-card-header">
-                    <div>
-                      <h3>{apartment.name}</h3>
-                      <p>{apartment.city ?? "Miasto nieuzupelnione"}</p>
+                return (
+                  <article className="calendar-card" key={`calendar-${apartment.id}`}>
+                    <div className="calendar-card-header">
+                      <div>
+                        <h3>{apartment.name}</h3>
+                        <p>{apartment.city ?? "Miasto nieuzupelnione"}</p>
+                      </div>
+                      <span className="calendar-month-chip">{monthCalendar.monthLabel}</span>
                     </div>
-                    <span className="calendar-month-chip">{monthCalendar.monthLabel}</span>
-                  </div>
 
-                  <div className="calendar-grid-labels">
-                    {weekDayLabels.map((label) => (
-                      <span key={`${apartment.id}-${label}`}>{label}</span>
-                    ))}
-                  </div>
+                    <div className="calendar-grid-labels">
+                      {weekDayLabels.map((label) => (
+                        <span key={`${apartment.id}-${label}`}>{label}</span>
+                      ))}
+                    </div>
 
-                  <div className="calendar-grid">
-                    {monthCalendar.days.map((day) => {
-                      const occupied = occupancyByDate.get(day.isoDate);
+                    <div className="calendar-grid">
+                      {monthCalendar.days.map((day) => {
+                        const occupied = occupancyByDate.get(day.isoDate);
 
-                      return (
-                        <div
-                          className={[
-                            "calendar-day",
-                            day.isCurrentMonth ? "" : "calendar-day--muted",
-                            occupied
-                              ? occupied.source === "calendar_block"
-                                ? "calendar-day--blocked"
-                                : "calendar-day--reserved"
-                              : "calendar-day--free",
-                          ]
-                            .filter(Boolean)
-                            .join(" ")}
-                          key={`${apartment.id}-${day.isoDate}`}
-                          title={occupied ? `${day.isoDate} | ${occupied.label}` : `${day.isoDate} | Wolny termin`}
-                        >
-                          <span>{day.dayNumber}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        return (
+                          <div
+                            className={[
+                              "calendar-day",
+                              day.isCurrentMonth ? "" : "calendar-day--muted",
+                              occupied
+                                ? occupied.source === "calendar_block"
+                                  ? "calendar-day--blocked"
+                                  : "calendar-day--reserved"
+                                : "calendar-day--free",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            key={`${apartment.id}-${day.isoDate}`}
+                            title={occupied ? `${day.isoDate} | ${occupied.label}` : `${day.isoDate} | Wolny termin`}
+                          >
+                            <span>{day.dayNumber}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                  <div className="calendar-legend">
-                    <span><i className="calendar-dot calendar-dot--free" /> Wolne</span>
-                    <span><i className="calendar-dot calendar-dot--reserved" /> Rezerwacja</span>
-                    <span><i className="calendar-dot calendar-dot--blocked" /> Blokada reczna</span>
-                  </div>
-                </article>
-              );
-            })}
+                    <div className="calendar-legend">
+                      <span><i className="calendar-dot calendar-dot--free" /> Wolne</span>
+                      <span><i className="calendar-dot calendar-dot--reserved" /> Rezerwacja</span>
+                      <span><i className="calendar-dot calendar-dot--blocked" /> Blokada reczna</span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          <div className="inline-notice">
+            <p>Kalendarz zajetosci pojawi sie, gdy panel poprawnie odczyta dane z bazy.</p>
           </div>
         )}
 
