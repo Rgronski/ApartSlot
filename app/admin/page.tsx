@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
+import { DomainError } from "@/lib/errors/domain-error";
+import { createApartment } from "@/services/admin/create-apartment";
 import {
   formatDashboardMoney,
   getAdminDashboardData,
@@ -33,8 +37,59 @@ function getBadgeClass(status: string) {
   return "status-badge status-badge--warning";
 }
 
-export default async function AdminPage() {
+function readString(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+function readNumber(formData: FormData, key: string) {
+  const rawValue = readString(formData, key).replace(",", ".");
+  return Number(rawValue);
+}
+
+type AdminPageProps = {
+  searchParams?: Promise<{
+    status?: string;
+    message?: string;
+  }>;
+};
+
+export default async function AdminPage({ searchParams }: AdminPageProps) {
+  const params = searchParams ? await searchParams : undefined;
   const dashboard = await getAdminDashboardData();
+  const status = params?.status;
+  const message = params?.message;
+
+  async function createApartmentAction(formData: FormData) {
+    "use server";
+
+    try {
+      await createApartment({
+        name: readString(formData, "name"),
+        slug: readString(formData, "slug"),
+        city: readString(formData, "city"),
+        address: readString(formData, "address"),
+        description: readString(formData, "description"),
+        maxGuests: readNumber(formData, "maxGuests"),
+        basePricePerNight: readNumber(formData, "basePricePerNight"),
+        cleaningFee: readNumber(formData, "cleaningFee"),
+        depositAmount: readNumber(formData, "depositAmount"),
+        minimumNights: readNumber(formData, "minimumNights"),
+        defaultCheckInTime: readString(formData, "defaultCheckInTime"),
+        defaultCheckOutTime: readString(formData, "defaultCheckOutTime"),
+        googleCalendarId: readString(formData, "googleCalendarId"),
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie zapisac apartamentu. Sprobuj ponownie.";
+
+      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    redirect("/admin?status=created");
+  }
 
   return (
     <main className="admin-shell">
@@ -53,6 +108,139 @@ export default async function AdminPage() {
             szybkim podgladzie sytuacji.
           </p>
         </div>
+      </section>
+
+      <section className="admin-card admin-form-card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Apartamenty</p>
+            <h2>Dodaj nowy apartament</h2>
+          </div>
+        </div>
+
+        <p>
+          Ten formularz sluzy do samodzielnego dodawania kolejnych obiektow do
+          systemu. Po zapisie apartament pojawi sie od razu na liscie w panelu.
+        </p>
+
+        {status === "created" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Apartament zostal zapisany poprawnie.</p>
+          </div>
+        ) : null}
+
+        {status === "error" && message ? (
+          <div className="inline-notice inline-notice--danger">
+            <p>{message}</p>
+          </div>
+        ) : null}
+
+        <form action={createApartmentAction} className="admin-form">
+          <div className="admin-form-grid">
+            <label className="admin-field">
+              <span>Nazwa apartamentu</span>
+              <input name="name" type="text" required placeholder="Np. Apartament Centrum" />
+            </label>
+
+            <label className="admin-field">
+              <span>Slug</span>
+              <input
+                name="slug"
+                type="text"
+                placeholder="Np. apartament-centrum"
+              />
+            </label>
+
+            <label className="admin-field">
+              <span>Miasto</span>
+              <input name="city" type="text" placeholder="Np. Warszawa" />
+            </label>
+
+            <label className="admin-field">
+              <span>Adres</span>
+              <input name="address" type="text" placeholder="Adres lub opis lokalizacji" />
+            </label>
+
+            <label className="admin-field">
+              <span>Maksymalna liczba gosci</span>
+              <input name="maxGuests" type="number" min="1" step="1" required defaultValue="2" />
+            </label>
+
+            <label className="admin-field">
+              <span>Cena za noc (PLN)</span>
+              <input
+                name="basePricePerNight"
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                defaultValue="350"
+              />
+            </label>
+
+            <label className="admin-field">
+              <span>Oplata za sprzatanie (PLN)</span>
+              <input
+                name="cleaningFee"
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                defaultValue="120"
+              />
+            </label>
+
+            <label className="admin-field">
+              <span>Kaucja (PLN)</span>
+              <input
+                name="depositAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                defaultValue="500"
+              />
+            </label>
+
+            <label className="admin-field">
+              <span>Minimalna liczba nocy</span>
+              <input name="minimumNights" type="number" min="1" step="1" required defaultValue="1" />
+            </label>
+
+            <label className="admin-field">
+              <span>Godzina check-in</span>
+              <input name="defaultCheckInTime" type="text" placeholder="15:00" defaultValue="15:00" />
+            </label>
+
+            <label className="admin-field">
+              <span>Godzina check-out</span>
+              <input name="defaultCheckOutTime" type="text" placeholder="11:00" defaultValue="11:00" />
+            </label>
+
+            <label className="admin-field">
+              <span>Google Calendar ID</span>
+              <input name="googleCalendarId" type="text" placeholder="Opcjonalnie" />
+            </label>
+          </div>
+
+          <label className="admin-field">
+            <span>Opis</span>
+            <textarea
+              name="description"
+              rows={4}
+              placeholder="Krotki opis apartamentu, lokalizacji lub standardu."
+            />
+          </label>
+
+          <div className="admin-form-actions">
+            <button className="cta-button" type="submit">
+              Zapisz apartament
+            </button>
+            <p className="admin-form-note">
+              Jesli slug zostawisz pusty, system zbuduje go automatycznie z nazwy.
+            </p>
+          </div>
+        </form>
       </section>
 
       {dashboard.state !== "ready" ? (

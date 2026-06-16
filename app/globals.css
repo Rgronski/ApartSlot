@@ -151,6 +151,10 @@ a {
   margin-top: 24px;
 }
 
+.admin-form-card {
+  margin-top: 24px;
+}
+
 .admin-metrics {
   display: grid;
   gap: 20px;
@@ -297,6 +301,69 @@ a {
   padding-left: 20px;
   color: var(--muted);
   line-height: 1.8;
+}
+
+.admin-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.admin-form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.admin-field {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-field span {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.admin-field input,
+.admin-field textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 250, 242, 0.92);
+  color: var(--text);
+  font: inherit;
+}
+
+.admin-field input:focus,
+.admin-field textarea:focus {
+  outline: 2px solid rgba(189, 123, 48, 0.18);
+  border-color: rgba(189, 123, 48, 0.45);
+}
+
+.admin-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-form-note {
+  margin: 0;
+  color: var(--muted);
+}
+
+.inline-notice--success {
+  background: rgba(239, 250, 243, 0.95);
+  border-color: rgba(43, 122, 72, 0.2);
+}
+
+.inline-notice--danger {
+  background: rgba(255, 242, 239, 0.95);
+  border-color: rgba(166, 64, 41, 0.18);
 }
 
 .payment-grid {
