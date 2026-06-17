@@ -4,13 +4,124 @@ import { redirect } from "next/navigation";
 import { APP_VERSION } from "@/lib/app-version";
 import { prisma } from "@/lib/db/prisma";
 import { DomainError } from "@/lib/errors/domain-error";
+import { getGoogleCalendarBusyMap } from "@/services/calendar";
 import { createOnlineReservationWithPrisma } from "@/services/reservations";
 
 const nextSteps = [
   "Zbieranie pierwszych prawdziwych rezerwacji online.",
   "Dalsze dopinanie blokad terminow i pracy operatora.",
-  "Rozszerzenie panelu o kalendarz i podglad oblozenia.",
+  "Rozszerzenie pracy operatora i automatyzacji po rezerwacji.",
 ];
+
+function toIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function getMonthCalendarDays() {
+  const today = new Date();
+  const monthStart = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
+  );
+  const monthEnd = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0),
+  );
+  const startWeekday = (monthStart.getUTCDay() + 6) % 7;
+  const gridStart = addDays(monthStart, -startWeekday);
+  const days: { isoDate: string; dayNumber: number; isCurrentMonth: boolean }[] = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const current = addDays(gridStart, index);
+    days.push({
+      isoDate: toIsoDate(current),
+      dayNumber: current.getUTCDate(),
+      isCurrentMonth: current >= monthStart && current <= monthEnd,
+    });
+  }
+
+  return {
+    monthStart,
+    monthEnd,
+    monthLabel: new Intl.DateTimeFormat("pl-PL", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(monthStart),
+    days,
+  };
+}
+
+function buildPublicOccupancyDates(input: {
+  reservations: {
+    reservationNumber: string;
+    checkInDate: Date;
+    checkOutDate: Date;
+  }[];
+  calendarBlocks: {
+    dateFrom: Date;
+    dateTo: Date;
+    reason: string | null;
+  }[];
+  googleCalendarDates: {
+    date: string;
+    source: "google_calendar";
+    label: string;
+  }[];
+}) {
+  const occupancyMap = new Map<
+    string,
+    {
+      date: string;
+      source: "reservation" | "calendar_block" | "google_calendar";
+      label: string;
+    }
+  >();
+
+  for (const reservation of input.reservations) {
+    for (
+      let cursor = new Date(reservation.checkInDate);
+      cursor < reservation.checkOutDate;
+      cursor = addDays(cursor, 1)
+    ) {
+      const isoDate = toIsoDate(cursor);
+      occupancyMap.set(isoDate, {
+        date: isoDate,
+        source: "reservation",
+        label: `Rezerwacja ${reservation.reservationNumber}`,
+      });
+    }
+  }
+
+  for (const block of input.calendarBlocks) {
+    for (
+      let cursor = new Date(block.dateFrom);
+      cursor <= block.dateTo;
+      cursor = addDays(cursor, 1)
+    ) {
+      const isoDate = toIsoDate(cursor);
+      occupancyMap.set(isoDate, {
+        date: isoDate,
+        source: "calendar_block",
+        label: block.reason ?? "Blokada reczna",
+      });
+    }
+  }
+
+  for (const googleDate of input.googleCalendarDates) {
+    if (!occupancyMap.has(googleDate.date)) {
+      occupancyMap.set(googleDate.date, googleDate);
+    }
+  }
+
+  return Array.from(occupancyMap.values()).sort((left, right) =>
+    left.date.localeCompare(right.date),
+  );
+}
 
 function readString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -58,13 +169,27 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const params = searchParams ? await searchParams : undefined;
   const status = params?.status;
   const message = params?.message;
+  const monthCalendar = getMonthCalendarDays();
 
   let apartments:
-    | Awaited<
-        ReturnType<
-          typeof prisma.apartment.findMany
-        >
-      >
+    | Array<{
+        id: string;
+        name: string;
+        city: string | null;
+        basePricePerNight: unknown;
+        googleCalendarId: string | null;
+        reservations: {
+          reservationNumber: string;
+          checkInDate: Date;
+          checkOutDate: Date;
+        }[];
+        calendarBlocks: {
+          id: string;
+          dateFrom: Date;
+          dateTo: Date;
+          reason: string | null;
+        }[];
+      }>
     | [] = [];
   let apartmentsError: string | null = null;
 
@@ -75,6 +200,47 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       },
       orderBy: {
         createdAt: "asc",
+      },
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        basePricePerNight: true,
+        googleCalendarId: true,
+        reservations: {
+          where: {
+            status: {
+              in: ["PENDING_PAYMENT", "CONFIRMED", "MANUAL_BLOCK"],
+            },
+            checkInDate: {
+              lte: monthCalendar.monthEnd,
+            },
+            checkOutDate: {
+              gt: monthCalendar.monthStart,
+            },
+          },
+          select: {
+            reservationNumber: true,
+            checkInDate: true,
+            checkOutDate: true,
+          },
+        },
+        calendarBlocks: {
+          where: {
+            dateFrom: {
+              lte: monthCalendar.monthEnd,
+            },
+            dateTo: {
+              gte: monthCalendar.monthStart,
+            },
+          },
+          select: {
+            id: true,
+            dateFrom: true,
+            dateTo: true,
+            reason: true,
+          },
+        },
       },
     });
   } catch (error) {
@@ -87,6 +253,38 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       ? "Aplikacja chwilowo nie moze polaczyc sie z baza danych. To zwykle oznacza problem z konfiguracja polaczenia Supabase w Vercel."
       : rawMessage;
   }
+
+  let googleCalendarBusyMap = new Map<
+    string,
+    { date: string; source: "google_calendar"; label: string }[]
+  >();
+
+  if (!apartmentsError) {
+    try {
+      googleCalendarBusyMap = await getGoogleCalendarBusyMap({
+        calendars: apartments.map((apartment) => ({
+          apartmentId: apartment.id,
+          calendarId: apartment.googleCalendarId,
+        })),
+        dateFrom: monthCalendar.monthStart,
+        dateTo: addDays(monthCalendar.monthEnd, 1),
+      });
+    } catch (error) {
+      console.error("Google Calendar occupancy load failed on homepage", error);
+    }
+  }
+
+  const apartmentsForCalendar = apartments.map((apartment) => ({
+    id: apartment.id,
+    name: apartment.name,
+    city: apartment.city,
+    basePricePerNight: Number(apartment.basePricePerNight),
+    occupancyDates: buildPublicOccupancyDates({
+      reservations: apartment.reservations,
+      calendarBlocks: apartment.calendarBlocks,
+      googleCalendarDates: googleCalendarBusyMap.get(apartment.id) ?? [],
+    }),
+  }));
 
   async function createPublicReservationAction(formData: FormData) {
     "use server";
@@ -200,7 +398,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <label className="admin-field">
                 <span>Apartament</span>
                 <select name="apartmentId" defaultValue={apartments[0]?.id} required>
-                  {apartments.map((apartment) => (
+                  {apartmentsForCalendar.map((apartment) => (
                     <option key={apartment.id} value={apartment.id}>
                       {apartment.name} | {apartment.city ?? "bez miasta"} | od {Number(apartment.basePricePerNight).toFixed(2)} PLN
                     </option>
@@ -289,6 +487,96 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </p>
             </div>
           </form>
+        )}
+      </section>
+
+      <section className="info-card booking-card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Kalendarz dostepnosci</p>
+            <h2>Wolne i zajete terminy</h2>
+          </div>
+        </div>
+
+        <p>
+          Klient widzi tutaj biezacy miesiac i moze szybko sprawdzic, ktore dni
+          sa juz zajete przez rezerwacje, blokady albo wydarzenia z Google
+          Calendar.
+        </p>
+
+        {apartmentsError ? (
+          <div className="inline-notice inline-notice--danger">
+            <p>{apartmentsError}</p>
+          </div>
+        ) : apartmentsForCalendar.length === 0 ? (
+          <div className="inline-notice">
+            <p>Dodaj aktywny apartament, aby pokazac kalendarz dostepnosci.</p>
+          </div>
+        ) : (
+          <div className="admin-stack">
+            {apartmentsForCalendar.map((apartment) => {
+              const occupancyByDate = new Map(
+                apartment.occupancyDates.map((item) => [item.date, item]),
+              );
+
+              return (
+                <article className="calendar-card" key={`public-calendar-${apartment.id}`}>
+                  <div className="calendar-card-header">
+                    <div>
+                      <h3>{apartment.name}</h3>
+                      <p>{apartment.city ?? "Miasto nieuzupelnione"}</p>
+                    </div>
+                    <span className="calendar-month-chip">{monthCalendar.monthLabel}</span>
+                  </div>
+
+                  <div className="calendar-grid-labels">
+                    {["Pn", "Wt", "Sr", "Cz", "Pt", "So", "Nd"].map((label) => (
+                      <span key={`${apartment.id}-${label}`}>{label}</span>
+                    ))}
+                  </div>
+
+                  <div className="calendar-grid">
+                    {monthCalendar.days.map((day) => {
+                      const occupied = occupancyByDate.get(day.isoDate);
+
+                      return (
+                        <div
+                          className={[
+                            "calendar-day",
+                            day.isCurrentMonth ? "" : "calendar-day--muted",
+                            occupied
+                              ? occupied.source === "calendar_block"
+                                ? "calendar-day--blocked"
+                                : occupied.source === "google_calendar"
+                                  ? "calendar-day--google"
+                                  : "calendar-day--reserved"
+                              : "calendar-day--free",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          key={`${apartment.id}-${day.isoDate}`}
+                          title={
+                            occupied
+                              ? `${day.isoDate} | ${occupied.label}`
+                              : `${day.isoDate} | Wolny termin`
+                          }
+                        >
+                          <span>{day.dayNumber}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="calendar-legend">
+                    <span><i className="calendar-dot calendar-dot--free" /> Wolne</span>
+                    <span><i className="calendar-dot calendar-dot--reserved" /> Rezerwacja</span>
+                    <span><i className="calendar-dot calendar-dot--blocked" /> Blokada reczna</span>
+                    <span><i className="calendar-dot calendar-dot--google" /> Google Calendar</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
       </section>
     </main>

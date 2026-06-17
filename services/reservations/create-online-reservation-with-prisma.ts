@@ -9,6 +9,7 @@ import {
 
 import { DomainError } from "@/lib/errors/domain-error";
 import { prisma } from "@/lib/db/prisma";
+import { getGoogleCalendarBusyMap } from "@/services/calendar";
 import { createOnlineReservation, type CreateOnlineReservationResult, type GuestInput } from "@/services/reservations/create-online-reservation";
 
 type PrismaDbClient = PrismaClient | Prisma.TransactionClient;
@@ -207,6 +208,30 @@ async function loadPricingRules(tx: PrismaDbClient, apartmentId: string) {
   return pricingRules.map(mapPricingRule);
 }
 
+async function loadGoogleCalendarBusy(input: {
+  apartmentId: string;
+  googleCalendarId: string | null;
+  checkInDate: Date;
+  checkOutDate: Date;
+}) {
+  if (!input.googleCalendarId?.trim()) {
+    return false;
+  }
+
+  const busyMap = await getGoogleCalendarBusyMap({
+    calendars: [
+      {
+        apartmentId: input.apartmentId,
+        calendarId: input.googleCalendarId,
+      },
+    ],
+    dateFrom: input.checkInDate,
+    dateTo: input.checkOutDate,
+  });
+
+  return (busyMap.get(input.apartmentId)?.length ?? 0) > 0;
+}
+
 async function persistGuest(
   tx: PrismaDbClient,
   result: CreateOnlineReservationResult,
@@ -256,10 +281,16 @@ export async function createOnlineReservationWithPrisma(
 ): Promise<CreateOnlineReservationWithPrismaResult> {
   const normalizedCheckInDate = normalizeDateInput(input.checkInDate);
   const normalizedCheckOutDate = normalizeDateInput(input.checkOutDate);
+  const apartment = await loadApartmentOrThrow(db, input.apartmentId);
+  const googleCalendarBusy = await loadGoogleCalendarBusy({
+    apartmentId: apartment.id,
+    googleCalendarId: apartment.googleCalendarId,
+    checkInDate: normalizedCheckInDate,
+    checkOutDate: normalizedCheckOutDate,
+  });
 
   return db.$transaction(
     async (tx) => {
-      const apartment = await loadApartmentOrThrow(tx, input.apartmentId);
       const pricingRules = await loadPricingRules(tx, apartment.id);
       const { reservations, calendarBlocks } = await loadAvailabilityContext(
         tx,
@@ -294,7 +325,7 @@ export async function createOnlineReservationWithPrisma(
         existingGuests: existingGuests.map(mapGuestForResolution),
         existingReservations: reservations,
         calendarBlocks,
-        googleCalendarBusy: input.googleCalendarBusy,
+        googleCalendarBusy: input.googleCalendarBusy ?? googleCalendarBusy,
         now: input.now,
       });
 

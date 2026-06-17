@@ -273,6 +273,12 @@ a {
   color: #9f3820;
 }
 
+.calendar-day--google {
+  background: rgba(230, 241, 255, 0.98);
+  border-color: rgba(61, 107, 183, 0.2);
+  color: #295a9d;
+}
+
 .calendar-legend {
   display: flex;
   flex-wrap: wrap;
@@ -305,6 +311,10 @@ a {
 
 .calendar-dot--blocked {
   background: rgba(255, 236, 231, 0.98);
+}
+
+.calendar-dot--google {
+  background: rgba(230, 241, 255, 0.98);
 }
 
 .admin-metrics {

@@ -502,6 +502,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                               occupied
                                 ? occupied.source === "calendar_block"
                                   ? "calendar-day--blocked"
+                                  : occupied.source === "google_calendar"
+                                    ? "calendar-day--google"
                                   : "calendar-day--reserved"
                                 : "calendar-day--free",
                             ]
@@ -520,6 +522,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       <span><i className="calendar-dot calendar-dot--free" /> Wolne</span>
                       <span><i className="calendar-dot calendar-dot--reserved" /> Rezerwacja</span>
                       <span><i className="calendar-dot calendar-dot--blocked" /> Blokada reczna</span>
+                      <span><i className="calendar-dot calendar-dot--google" /> Google Calendar</span>
                     </div>
                   </article>
                 );

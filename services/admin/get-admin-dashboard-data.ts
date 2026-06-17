@@ -6,6 +6,7 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
+import { getGoogleCalendarBusyMap } from "@/services/calendar";
 
 type DashboardMetric = {
   label: string;
@@ -75,7 +76,7 @@ type DashboardApartment = {
   }[];
   occupancyDates: {
     date: string;
-    source: "reservation" | "calendar_block";
+    source: "reservation" | "calendar_block" | "google_calendar";
     label: string;
   }[];
   pricingRules: {
@@ -138,12 +139,17 @@ function buildOccupancyDates(
     dateTo: Date;
     reason: string | null;
   }[],
+  googleCalendarDates: {
+    date: string;
+    source: "google_calendar";
+    label: string;
+  }[] = [],
 ) {
   const occupancyMap = new Map<
     string,
     {
       date: string;
-      source: "reservation" | "calendar_block";
+      source: "reservation" | "calendar_block" | "google_calendar";
       label: string;
     }
   >();
@@ -175,6 +181,12 @@ function buildOccupancyDates(
         source: "calendar_block",
         label: block.reason ?? "Blokada reczna",
       });
+    }
+  }
+
+  for (const googleDate of googleCalendarDates) {
+    if (!occupancyMap.has(googleDate.date)) {
+      occupancyMap.set(googleDate.date, googleDate);
     }
   }
 
@@ -236,6 +248,27 @@ export async function getAdminDashboardData(
     ]);
 
     const apartmentIds = apartments.map((apartment) => apartment.id);
+    let googleCalendarBusyMap = new Map<
+      string,
+      {
+        date: string;
+        source: "google_calendar";
+        label: string;
+      }[]
+    >();
+
+    try {
+      googleCalendarBusyMap = await getGoogleCalendarBusyMap({
+        calendars: apartments.map((apartment) => ({
+          apartmentId: apartment.id,
+          calendarId: apartment.googleCalendarId,
+        })),
+        dateFrom: monthStart,
+        dateTo: addDays(monthEnd, 1),
+      });
+    } catch (error) {
+      console.error("Google Calendar occupancy load failed in admin", error);
+    }
 
     const [apartmentReservations, apartmentCalendarBlocks, apartmentPricingRules] =
       apartmentIds.length === 0
@@ -551,6 +584,8 @@ export async function getAdminDashboardData(
           calendarBlocksByApartment.get(apartment.id) ?? [];
         const apartmentPricingRulesForCard =
           pricingRulesByApartment.get(apartment.id) ?? [];
+        const apartmentGoogleBusyDates =
+          googleCalendarBusyMap.get(apartment.id) ?? [];
 
         return {
           id: apartment.id,
@@ -579,6 +614,7 @@ export async function getAdminDashboardData(
           occupancyDates: buildOccupancyDates(
             apartmentReservationsForCard,
             apartmentCalendarBlocksForCard,
+            apartmentGoogleBusyDates,
           ),
           pricingRules: apartmentPricingRulesForCard.slice(0, 8).map((rule) => ({
             id: rule.id,
