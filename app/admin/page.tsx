@@ -9,6 +9,7 @@ import { DomainError } from "@/lib/errors/domain-error";
 import { createApartment } from "@/services/admin/create-apartment";
 import { createCalendarBlock } from "@/services/admin/create-calendar-block";
 import { createPricingRule } from "@/services/admin/create-pricing-rule";
+import { deleteApartment } from "@/services/admin/delete-apartment";
 import { deleteCalendarBlock } from "@/services/admin/delete-calendar-block";
 import { deletePricingRule } from "@/services/admin/delete-pricing-rule";
 import {
@@ -193,6 +194,24 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
     revalidatePath("/admin");
     redirect(`/admin?${adminMonthQuery}&status=updated`);
+  }
+
+  async function deleteApartmentAction(formData: FormData) {
+    "use server";
+
+    try {
+      await deleteApartment(readString(formData, "apartmentId"));
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie usunac apartamentu. Sprobuj ponownie.";
+
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    redirect(`/admin?${adminMonthQuery}&status=deleted`);
   }
 
   async function createPricingRuleAction(formData: FormData) {
@@ -407,6 +426,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
         ) : null}
 
+        {status === "deleted" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Apartament zostal usuniety poprawnie.</p>
+          </div>
+        ) : null}
+
         {status === "rule_created" ? (
           <div className="inline-notice inline-notice--success">
             <p>Regula cenowa zostala dodana poprawnie.</p>
@@ -504,6 +529,33 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       <span><i className="calendar-dot calendar-dot--reserved" /> Rezerwacja</span>
                       <span><i className="calendar-dot calendar-dot--blocked" /> Blokada reczna</span>
                       <span><i className="calendar-dot calendar-dot--google" /> Google Calendar</span>
+                    </div>
+
+                    <div className="calendar-card-actions">
+                      <a className="cta-button" href={`#apartment-editor-${apartment.id}`}>
+                        Edytuj apartament
+                      </a>
+
+                      <details className="admin-details admin-details--danger">
+                        <summary>Usun apartament</summary>
+
+                        <form action={deleteApartmentAction} className="admin-form admin-form--nested">
+                          <input name="apartmentId" type="hidden" value={apartment.id} />
+
+                          <div className="inline-notice inline-notice--danger">
+                            <p>
+                              Ta operacja usunie apartament oraz jego reguly cenowe i reczne blokady.
+                              Jesli istnieja rezerwacje, system zablokuje usuniecie.
+                            </p>
+                          </div>
+
+                          <div className="admin-form-actions">
+                            <button className="cta-button cta-button--danger" type="submit">
+                              Potwierdz usuniecie
+                            </button>
+                          </div>
+                        </form>
+                      </details>
                     </div>
                   </article>
                 );
@@ -786,7 +838,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 ) : (
                   <div className="admin-stack">
                     {dashboard.apartments.map((apartment) => (
-                      <article className="admin-row-card" key={apartment.id}>
+                      <article className="admin-row-card" id={`apartment-editor-${apartment.id}`} key={apartment.id}>
                         <div className="admin-row-top">
                           <div>
                             <h3>{apartment.name}</h3>
@@ -898,6 +950,27 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                             <div className="admin-form-actions">
                               <button className="cta-button" type="submit">
                                 Zapisz zmiany
+                              </button>
+                            </div>
+                          </form>
+                        </details>
+
+                        <details className="admin-details admin-details--danger">
+                          <summary>Usun apartament</summary>
+
+                          <form action={deleteApartmentAction} className="admin-form admin-form--nested">
+                            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+                            <div className="inline-notice inline-notice--danger">
+                              <p>
+                                Apartament mozna usunac tylko wtedy, gdy nie ma jeszcze zadnych rezerwacji.
+                                Reguly cenowe i reczne blokady zostana skasowane razem z nim.
+                              </p>
+                            </div>
+
+                            <div className="admin-form-actions">
+                              <button className="cta-button cta-button--danger" type="submit">
+                                Potwierdz usuniecie
                               </button>
                             </div>
                           </form>

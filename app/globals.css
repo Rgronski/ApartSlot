@@ -335,6 +335,17 @@ a {
   gap: 8px;
 }
 
+.calendar-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.calendar-card-actions .cta-button {
+  width: fit-content;
+}
+
 .calendar-dot {
   width: 12px;
   height: 12px;
@@ -581,6 +592,15 @@ a {
 
 .admin-details--top-form {
   margin-top: 24px;
+}
+
+.admin-details--danger {
+  border-color: rgba(166, 64, 41, 0.18);
+  background: rgba(255, 248, 246, 0.82);
+}
+
+.admin-details--danger[open] {
+  box-shadow: 0 14px 28px rgba(166, 64, 41, 0.08);
 }
 
 .admin-details:target {
