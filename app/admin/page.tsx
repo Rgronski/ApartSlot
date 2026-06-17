@@ -116,6 +116,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     dashboard.state === "ready"
       ? dashboard.apartments.filter((apartment) => apartment.googleCalendarId).length
       : 0;
+  const activeApartmentsForCalendar =
+    dashboard.state === "ready"
+      ? dashboard.apartments.filter((apartment) => apartment.isActive)
+      : [];
   const googleCalendarStatus =
     dashboard.state === "ready"
       ? await getGoogleCalendarIntegrationStatus({
@@ -428,6 +432,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           zajete przez rezerwacje, reczne blokady lub Google Calendar.
         </p>
 
+        <div className="inline-notice">
+          <p>Kalendarz pokazuje tylko apartamenty aktywne. Nieaktywne pozostaja dostepne nizej do edycji.</p>
+        </div>
+
         <div className="calendar-toolbar">
           <Link className="calendar-nav-button" href={`/admin?month=${monthCalendar.previousMonthParam}`}>
             Poprzedni miesiac
@@ -510,13 +518,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         ) : null}
 
         {dashboard.state === "ready" ? (
-          dashboard.apartments.length === 0 ? (
+          activeApartmentsForCalendar.length === 0 ? (
             <div className="inline-notice">
-              <p>Dodaj pierwszy apartament, aby uruchomic kalendarz zajetosci.</p>
+              <p>Brak aktywnych apartamentow do pokazania w kalendarzu zajetosci.</p>
             </div>
           ) : (
             <div className="admin-stack">
-              {dashboard.apartments.map((apartment) => {
+              {activeApartmentsForCalendar.map((apartment) => {
                 const occupancyByDate = new Map(
                   apartment.occupancyDates.map((item) => [item.date, item]),
                 );
