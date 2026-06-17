@@ -6,6 +6,7 @@ import { PricingRuleType } from "@prisma/client";
 import { APP_VERSION } from "@/lib/app-version";
 import { buildMonthView, WEEK_DAY_LABELS } from "@/lib/calendar/month-view";
 import { DomainError } from "@/lib/errors/domain-error";
+import { cancelReservation } from "@/services/admin/cancel-reservation";
 import { createApartment } from "@/services/admin/create-apartment";
 import { createCalendarBlock } from "@/services/admin/create-calendar-block";
 import { createPricingRule } from "@/services/admin/create-pricing-rule";
@@ -53,6 +54,10 @@ function getBadgeClass(status: string) {
   }
 
   return "status-badge status-badge--warning";
+}
+
+function canReservationBeCancelled(status: string) {
+  return status === "DRAFT" || status === "PENDING_PAYMENT" || status === "CONFIRMED";
 }
 
 function readString(formData: FormData, key: string) {
@@ -212,6 +217,25 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
     revalidatePath("/admin");
     redirect(`/admin?${adminMonthQuery}&status=deleted`);
+  }
+
+  async function cancelReservationAction(formData: FormData) {
+    "use server";
+
+    try {
+      await cancelReservation(readString(formData, "reservationId"));
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie anulowac rezerwacji. Sprobuj ponownie.";
+
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/");
+    redirect(`/admin?${adminMonthQuery}&status=reservation_cancelled`);
   }
 
   async function createPricingRuleAction(formData: FormData) {
@@ -429,6 +453,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         {status === "deleted" ? (
           <div className="inline-notice inline-notice--success">
             <p>Apartament zostal usuniety poprawnie.</p>
+          </div>
+        ) : null}
+
+        {status === "reservation_cancelled" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Rezerwacja zostala anulowana poprawnie.</p>
           </div>
         ) : null}
 
@@ -774,6 +804,29 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           <dd>{reservation.createdAt}</dd>
                         </div>
                       </dl>
+
+                      {canReservationBeCancelled(reservation.status) ? (
+                        <details className="admin-details admin-details--danger">
+                          <summary>Anuluj rezerwacje</summary>
+
+                          <form action={cancelReservationAction} className="admin-form admin-form--nested">
+                            <input name="reservationId" type="hidden" value={reservation.id} />
+
+                            <div className="inline-notice inline-notice--danger">
+                              <p>
+                                Ta akcja ustawi rezerwacje jako anulowana, zatrzyma nieoplacone platnosci
+                                i sprobuje usunac wpis z Google Calendar.
+                              </p>
+                            </div>
+
+                            <div className="admin-form-actions">
+                              <button className="cta-button cta-button--danger" type="submit">
+                                Potwierdz anulowanie
+                              </button>
+                            </div>
+                          </form>
+                        </details>
+                      ) : null}
                     </article>
                   ))}
                 </div>
