@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PricingRuleType } from "@prisma/client";
 
 import { APP_VERSION } from "@/lib/app-version";
+import { buildMonthView, WEEK_DAY_LABELS } from "@/lib/calendar/month-view";
 import { DomainError } from "@/lib/errors/domain-error";
 import { createApartment } from "@/services/admin/create-apartment";
 import { createCalendarBlock } from "@/services/admin/create-calendar-block";
@@ -41,23 +42,6 @@ const pricingRuleTypeLabels: Record<PricingRuleType, string> = {
   CUSTOM: "Wlasna",
 };
 
-const monthNames = [
-  "styczen",
-  "luty",
-  "marzec",
-  "kwiecien",
-  "maj",
-  "czerwiec",
-  "lipiec",
-  "sierpien",
-  "wrzesien",
-  "pazdziernik",
-  "listopad",
-  "grudzien",
-];
-
-const weekDayLabels = ["Pn", "Wt", "Sr", "Cz", "Pt", "So", "Nd"];
-
 function getBadgeClass(status: string) {
   if (status === "CONFIRMED" || status === "PAID" || status === "COMPLETED") {
     return "status-badge status-badge--success";
@@ -93,45 +77,9 @@ function readBoolean(formData: FormData, key: string) {
   return formData.get(key) === "on";
 }
 
-function toIsoDate(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
-}
-
-function getMonthCalendarDays() {
-  const today = new Date();
-  const monthStart = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
-  );
-  const monthEnd = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0),
-  );
-  const startWeekday = (monthStart.getUTCDay() + 6) % 7;
-  const gridStart = addDays(monthStart, -startWeekday);
-  const days: { isoDate: string; dayNumber: number; isCurrentMonth: boolean }[] = [];
-
-  for (let index = 0; index < 42; index += 1) {
-    const current = addDays(gridStart, index);
-    days.push({
-      isoDate: toIsoDate(current),
-      dayNumber: current.getUTCDate(),
-      isCurrentMonth: current >= monthStart && current <= monthEnd,
-    });
-  }
-
-  return {
-    monthLabel: `${monthNames[monthStart.getUTCMonth()]} ${monthStart.getUTCFullYear()}`,
-    days,
-  };
-}
-
 type AdminPageProps = {
   searchParams?: Promise<{
+    month?: string;
     status?: string;
     message?: string;
     previewApartmentId?: string;
@@ -142,13 +90,25 @@ type AdminPageProps = {
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = searchParams ? await searchParams : undefined;
-  const dashboard = await getAdminDashboardData();
-  const monthCalendar = getMonthCalendarDays();
+  const monthCalendar = buildMonthView(params?.month);
+  const dashboard = await getAdminDashboardData({
+    monthStart: monthCalendar.monthStart,
+    monthEnd: monthCalendar.monthEnd,
+  });
   const status = params?.status;
   const message = params?.message;
   const previewApartmentId = params?.previewApartmentId;
   const previewCheckInDate = params?.previewCheckInDate;
   const previewCheckOutDate = params?.previewCheckOutDate;
+  const googleCalendarConfigReady = Boolean(
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.trim(),
+  );
+  const adminMonthQuery = `month=${encodeURIComponent(monthCalendar.monthParam)}`;
+  const apartmentsWithCalendarIds =
+    dashboard.state === "ready"
+      ? dashboard.apartments.filter((apartment) => apartment.googleCalendarId).length
+      : 0;
   let pricingPreview:
     | Awaited<ReturnType<typeof previewPricingCalculation>>
     | null = null;
@@ -194,11 +154,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           ? error.message
           : "Nie udalo sie zapisac apartamentu. Sprobuj ponownie.";
 
-      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
 
     revalidatePath("/admin");
-    redirect("/admin?status=created");
+    redirect(`/admin?${adminMonthQuery}&status=created`);
   }
 
   async function updateApartmentAction(formData: FormData) {
@@ -228,11 +188,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           ? error.message
           : "Nie udalo sie zapisac zmian apartamentu. Sprobuj ponownie.";
 
-      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
 
     revalidatePath("/admin");
-    redirect("/admin?status=updated");
+    redirect(`/admin?${adminMonthQuery}&status=updated`);
   }
 
   async function createPricingRuleAction(formData: FormData) {
@@ -262,11 +222,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           ? error.message
           : "Nie udalo sie dodac reguly cenowej. Sprobuj ponownie.";
 
-      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
 
     revalidatePath("/admin");
-    redirect("/admin?status=rule_created");
+    redirect(`/admin?${adminMonthQuery}&status=rule_created`);
   }
 
   async function updatePricingRuleAction(formData: FormData) {
@@ -297,11 +257,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           ? error.message
           : "Nie udalo sie zapisac reguly cenowej. Sprobuj ponownie.";
 
-      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
 
     revalidatePath("/admin");
-    redirect("/admin?status=rule_updated");
+    redirect(`/admin?${adminMonthQuery}&status=rule_updated`);
   }
 
   async function deletePricingRuleAction(formData: FormData) {
@@ -315,11 +275,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           ? error.message
           : "Nie udalo sie wylaczyc reguly cenowej. Sprobuj ponownie.";
 
-      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
 
     revalidatePath("/admin");
-    redirect("/admin?status=rule_deleted");
+    redirect(`/admin?${adminMonthQuery}&status=rule_deleted`);
   }
 
   async function previewPricingRuleAction(formData: FormData) {
@@ -331,12 +291,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
     if (!apartmentId || !checkInDate || !checkOutDate) {
       redirect(
-        `/admin?status=error&message=${encodeURIComponent("Uzupelnij termin, aby policzyc podglad ceny.")}`,
+        `/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent("Uzupelnij termin, aby policzyc podglad ceny.")}`,
       );
     }
 
     redirect(
-      `/admin?previewApartmentId=${encodeURIComponent(apartmentId)}&previewCheckInDate=${encodeURIComponent(checkInDate)}&previewCheckOutDate=${encodeURIComponent(checkOutDate)}#pricing-preview-${encodeURIComponent(apartmentId)}`,
+      `/admin?${adminMonthQuery}&previewApartmentId=${encodeURIComponent(apartmentId)}&previewCheckInDate=${encodeURIComponent(checkInDate)}&previewCheckOutDate=${encodeURIComponent(checkOutDate)}#pricing-preview-${encodeURIComponent(apartmentId)}`,
     );
   }
 
@@ -356,11 +316,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           ? error.message
           : "Nie udalo sie zapisac blokady terminu. Sprobuj ponownie.";
 
-      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
 
     revalidatePath("/admin");
-    redirect("/admin?status=block_created");
+    redirect(`/admin?${adminMonthQuery}&status=block_created`);
   }
 
   async function deleteCalendarBlockAction(formData: FormData) {
@@ -374,11 +334,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           ? error.message
           : "Nie udalo sie usunac blokady terminu. Sprobuj ponownie.";
 
-      redirect(`/admin?status=error&message=${encodeURIComponent(errorMessage)}`);
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
 
     revalidatePath("/admin");
-    redirect("/admin?status=block_deleted");
+    redirect(`/admin?${adminMonthQuery}&status=block_deleted`);
   }
 
   return (
@@ -410,9 +370,30 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
 
         <p>
-          Tutaj widzisz biezacy miesiac i szybko sprawdzisz, ktore dni sa juz
-          zajete przez rezerwacje lub reczne blokady.
+          Tutaj widzisz wybrany miesiac i szybko sprawdzisz, ktore dni sa juz
+          zajete przez rezerwacje, reczne blokady lub Google Calendar.
         </p>
+
+        <div className="calendar-toolbar">
+          <Link className="calendar-nav-button" href={`/admin?month=${monthCalendar.previousMonthParam}`}>
+            Poprzedni miesiac
+          </Link>
+          <span className="calendar-toolbar-label">{monthCalendar.monthLabel}</span>
+          <Link className="calendar-nav-button" href={`/admin?month=${monthCalendar.nextMonthParam}`}>
+            Nastepny miesiac
+          </Link>
+        </div>
+
+        <div
+          className={`inline-notice ${googleCalendarConfigReady ? "inline-notice--success" : ""}`}
+        >
+          <p>
+            Google Calendar:{" "}
+            {googleCalendarConfigReady
+              ? `konto serwisowe jest gotowe, a ${apartmentsWithCalendarIds} apartament(y) maja wpisane calendar ID.`
+              : "brakuje jeszcze danych konta serwisowego w Vercel."}
+          </p>
+        </div>
 
         {status === "created" ? (
           <div className="inline-notice inline-notice--success">
@@ -485,7 +466,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     </div>
 
                     <div className="calendar-grid-labels">
-                      {weekDayLabels.map((label) => (
+                      {WEEK_DAY_LABELS.map((label) => (
                         <span key={`${apartment.id}-${label}`}>{label}</span>
                       ))}
                     </div>

@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { APP_VERSION } from "@/lib/app-version";
+import { buildMonthView, WEEK_DAY_LABELS } from "@/lib/calendar/month-view";
 import { prisma } from "@/lib/db/prisma";
 import { DomainError } from "@/lib/errors/domain-error";
 import { getGoogleCalendarBusyMap } from "@/services/calendar";
@@ -21,39 +23,6 @@ function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
   return next;
-}
-
-function getMonthCalendarDays() {
-  const today = new Date();
-  const monthStart = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
-  );
-  const monthEnd = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0),
-  );
-  const startWeekday = (monthStart.getUTCDay() + 6) % 7;
-  const gridStart = addDays(monthStart, -startWeekday);
-  const days: { isoDate: string; dayNumber: number; isCurrentMonth: boolean }[] = [];
-
-  for (let index = 0; index < 42; index += 1) {
-    const current = addDays(gridStart, index);
-    days.push({
-      isoDate: toIsoDate(current),
-      dayNumber: current.getUTCDate(),
-      isCurrentMonth: current >= monthStart && current <= monthEnd,
-    });
-  }
-
-  return {
-    monthStart,
-    monthEnd,
-    monthLabel: new Intl.DateTimeFormat("pl-PL", {
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(monthStart),
-    days,
-  };
 }
 
 function buildPublicOccupancyDates(input: {
@@ -160,6 +129,7 @@ function resolveAppBaseUrl() {
 
 type HomePageProps = {
   searchParams?: Promise<{
+    month?: string;
     status?: string;
     message?: string;
   }>;
@@ -169,7 +139,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const params = searchParams ? await searchParams : undefined;
   const status = params?.status;
   const message = params?.message;
-  const monthCalendar = getMonthCalendarDays();
+  const monthCalendar = buildMonthView(params?.month);
+  const homeMonthQuery = `month=${encodeURIComponent(monthCalendar.monthParam)}`;
 
   let apartments:
     | Array<{
@@ -293,7 +264,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
     if (!appBaseUrl) {
       redirect(
-        `/?status=error&message=${encodeURIComponent("Brakuje adresu aplikacji do przekierowania na platnosc.")}`,
+        `/?${homeMonthQuery}&status=error&message=${encodeURIComponent("Brakuje adresu aplikacji do przekierowania na platnosc.")}`,
       );
     }
 
@@ -327,7 +298,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           ? error.message
           : "Nie udalo sie utworzyc rezerwacji. Sprobuj ponownie.";
 
-      redirect(`/?status=error&message=${encodeURIComponent(errorMessage)}`);
+      redirect(`/?${homeMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
   }
 
@@ -499,10 +470,20 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
 
         <p>
-          Klient widzi tutaj biezacy miesiac i moze szybko sprawdzic, ktore dni
+          Klient widzi tutaj wybrany miesiac i moze szybko sprawdzic, ktore dni
           sa juz zajete przez rezerwacje, blokady albo wydarzenia z Google
           Calendar.
         </p>
+
+        <div className="calendar-toolbar">
+          <Link className="calendar-nav-button" href={`/?month=${monthCalendar.previousMonthParam}`}>
+            Poprzedni miesiac
+          </Link>
+          <span className="calendar-toolbar-label">{monthCalendar.monthLabel}</span>
+          <Link className="calendar-nav-button" href={`/?month=${monthCalendar.nextMonthParam}`}>
+            Nastepny miesiac
+          </Link>
+        </div>
 
         {apartmentsError ? (
           <div className="inline-notice inline-notice--danger">
@@ -530,7 +511,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   </div>
 
                   <div className="calendar-grid-labels">
-                    {["Pn", "Wt", "Sr", "Cz", "Pt", "So", "Nd"].map((label) => (
+                    {WEEK_DAY_LABELS.map((label) => (
                       <span key={`${apartment.id}-${label}`}>{label}</span>
                     ))}
                   </div>

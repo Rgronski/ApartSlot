@@ -196,6 +196,10 @@ function buildOccupancyDates(
 }
 
 export async function getAdminDashboardData(
+  options: {
+    monthStart: Date;
+    monthEnd: Date;
+  },
   db: PrismaClient = prisma,
 ): Promise<AdminDashboardData> {
   if (!process.env.DATABASE_URL) {
@@ -207,13 +211,8 @@ export async function getAdminDashboardData(
   }
 
   try {
-    const today = new Date();
-    const monthStart = new Date(
-      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
-    );
-    const monthEnd = new Date(
-      Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0),
-    );
+    const monthStart = options.monthStart;
+    const monthEnd = options.monthEnd;
 
     const [apartmentCount, activeApartmentCount, apartments] = await Promise.all([
       db.apartment.count(),
