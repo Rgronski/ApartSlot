@@ -418,6 +418,10 @@ a {
   gap: 20px;
 }
 
+.admin-side-column > .admin-card:first-child {
+  position: relative;
+}
+
 .admin-panel-card {
   min-height: 100%;
 }

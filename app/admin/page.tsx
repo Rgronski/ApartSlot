@@ -13,6 +13,7 @@ import { createPricingRule } from "@/services/admin/create-pricing-rule";
 import { deleteApartment } from "@/services/admin/delete-apartment";
 import { deleteCalendarBlock } from "@/services/admin/delete-calendar-block";
 import { deletePricingRule } from "@/services/admin/delete-pricing-rule";
+import { getGoogleCalendarIntegrationStatus } from "@/services/calendar/get-google-calendar-integration-status";
 import {
   formatDashboardMoney,
   getAdminDashboardData,
@@ -115,6 +116,16 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     dashboard.state === "ready"
       ? dashboard.apartments.filter((apartment) => apartment.googleCalendarId).length
       : 0;
+  const googleCalendarStatus =
+    dashboard.state === "ready"
+      ? await getGoogleCalendarIntegrationStatus({
+          apartments: dashboard.apartments.map((apartment) => ({
+            id: apartment.id,
+            name: apartment.name,
+            googleCalendarId: apartment.googleCalendarId,
+          })),
+        })
+      : null;
   let pricingPreview:
     | Awaited<ReturnType<typeof previewPricingCalculation>>
     | null = null;
@@ -834,6 +845,80 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             </article>
 
             <div className="admin-side-column">
+              <article className="admin-card admin-panel-card">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">Google Calendar</p>
+                    <h2>Status integracji</h2>
+                  </div>
+                </div>
+
+                {googleCalendarStatus === null ? (
+                  <p>Stan integracji pojawi sie po poprawnym odczycie danych z bazy.</p>
+                ) : (
+                  <div className="admin-stack">
+                    <article className="admin-row-card">
+                      <p className="inline-meta">
+                        Konto serwisowe:{" "}
+                        {googleCalendarStatus.serviceAccountReady
+                          ? "gotowe"
+                          : "brakuje danych w Vercel"}
+                      </p>
+                      <p className="inline-meta">
+                        Adres konta serwisowego:{" "}
+                        {googleCalendarStatus.serviceAccountEmail ?? "jeszcze nie wpisany"}
+                      </p>
+                      <p className="inline-meta">
+                        Fallback Calendar ID:{" "}
+                        {googleCalendarStatus.fallbackCalendarId ?? "brak"}
+                      </p>
+                    </article>
+
+                    {googleCalendarStatus.apartments.length === 0 ? (
+                      <p>Dodaj apartament, aby sprawdzic integracje kalendarza.</p>
+                    ) : (
+                      googleCalendarStatus.apartments.map((calendarStatus) => (
+                        <article className="admin-row-card" key={`google-status-${calendarStatus.apartmentId}`}>
+                          <div className="admin-row-top">
+                            <div>
+                              <h3>{calendarStatus.apartmentName}</h3>
+                              <p>{calendarStatus.calendarId ?? "Brak Calendar ID"}</p>
+                            </div>
+                            <span
+                              className={
+                                calendarStatus.status === "ok"
+                                  ? "status-badge status-badge--success"
+                                  : calendarStatus.status === "missing_calendar_id"
+                                    ? "status-badge status-badge--warning"
+                                    : "status-badge status-badge--danger"
+                              }
+                            >
+                              {calendarStatus.status === "ok"
+                                ? "Polaczony"
+                                : calendarStatus.status === "missing_calendar_id"
+                                  ? "Brak ID"
+                                  : calendarStatus.status === "missing_service_account"
+                                    ? "Brak konta"
+                                    : calendarStatus.status === "calendar_not_found"
+                                      ? "Nie znaleziono"
+                                      : calendarStatus.status === "access_denied"
+                                        ? "Brak dostepu"
+                                        : "Blad"}
+                            </span>
+                          </div>
+                          <p className="inline-meta">{calendarStatus.message}</p>
+                          {calendarStatus.resolvedCalendarName ? (
+                            <p className="inline-meta">
+                              Google widzi ten kalendarz jako: {calendarStatus.resolvedCalendarName}
+                            </p>
+                          ) : null}
+                        </article>
+                      ))
+                    )}
+                  </div>
+                )}
+              </article>
+
               <article className="admin-card admin-panel-card">
                 <div className="section-heading">
                   <div>
