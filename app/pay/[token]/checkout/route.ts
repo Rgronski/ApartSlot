@@ -13,6 +13,10 @@ function mapErrorToRedirectMessage(error: DomainError) {
       return "cancelled";
     case "PAYMENT_EXPIRED":
       return "expired";
+    case "MISSING_STRIPE_SECRET_KEY":
+      return "stripe_not_configured";
+    case "MISSING_APP_BASE_URL":
+      return "app_url_missing";
     default:
       return "error";
   }

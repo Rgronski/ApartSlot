@@ -122,7 +122,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       });
 
       revalidatePath("/");
-      redirect(result.paymentDraft.paymentUrl);
+      redirect(`${result.paymentDraft.paymentUrl}/checkout`);
     } catch (error) {
       const errorMessage =
         error instanceof DomainError
@@ -175,7 +175,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         <p>
           Klient wypelnia ten formularz, a po poprawnym zapisie przechodzi od
-          razu do ekranu platnosci.
+          razu do bezpiecznej platnosci Stripe.
         </p>
 
         {status === "error" && message ? (
@@ -285,7 +285,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 Przejdz do platnosci
               </button>
               <p className="admin-form-note">
-                System sprawdzi dostepnosc i od razu przygotuje link do platnosci.
+                System sprawdzi dostepnosc i od razu sprobuje uruchomic Stripe Checkout.
               </p>
             </div>
           </form>

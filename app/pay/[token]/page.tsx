@@ -81,6 +81,10 @@ function getCheckoutNotice(checkout: string | undefined) {
       return "Checkout nie zostal uruchomiony, bo nie znaleziono platnosci dla tego tokenu.";
     case "error":
       return "Nie udalo sie uruchomic checkout Stripe. Sprobuj ponownie albo skontaktuj sie z obsluga.";
+    case "stripe_not_configured":
+      return "Platnosci Stripe nie sa jeszcze w pelni skonfigurowane w aplikacji. Skontaktuj sie z obsluga.";
+    case "app_url_missing":
+      return "Aplikacja nie ma jeszcze kompletnego adresu potrzebnego do uruchomienia platnosci.";
     default:
       return null;
   }

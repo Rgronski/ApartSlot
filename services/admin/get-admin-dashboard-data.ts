@@ -39,6 +39,18 @@ type DashboardAttentionPayment = {
   paymentUrl: string | null;
 };
 
+type DashboardPricingRuleRecord = {
+  id: string;
+  name: string;
+  ruleType: PricingRuleType;
+  dateFrom: Date;
+  dateTo: Date;
+  pricePerNight: number | { toString(): string };
+  minimumNights: number | null;
+  priority: number;
+  isActive: boolean;
+};
+
 type DashboardApartment = {
   id: string;
   name: string;
@@ -203,60 +215,172 @@ export async function getAdminDashboardData(
         orderBy: {
           createdAt: "asc",
         },
-        include: {
-          reservations: {
-            where: {
-              status: {
-                in: [
-                  ReservationStatus.PENDING_PAYMENT,
-                  ReservationStatus.CONFIRMED,
-                  ReservationStatus.MANUAL_BLOCK,
-                ],
-              },
-              checkInDate: {
-                lte: monthEnd,
-              },
-              checkOutDate: {
-                gt: monthStart,
-              },
-            },
-            select: {
-              reservationNumber: true,
-              checkInDate: true,
-              checkOutDate: true,
-            },
-          },
-          calendarBlocks: {
-            where: {
-              dateFrom: {
-                lte: monthEnd,
-              },
-              dateTo: {
-                gte: monthStart,
-              },
-            },
-            orderBy: {
-              dateFrom: "asc",
-            },
-            take: 6,
-          },
-          pricingRules: {
-            where: {
-              isActive: true,
-            },
-            orderBy: [
-              {
-                priority: "desc",
-              },
-              {
-                dateFrom: "asc",
-              },
-            ],
-            take: 8,
-          },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          city: true,
+          address: true,
+          description: true,
+          maxGuests: true,
+          basePricePerNight: true,
+          cleaningFee: true,
+          depositAmount: true,
+          minimumNights: true,
+          defaultCheckInTime: true,
+          defaultCheckOutTime: true,
+          isActive: true,
+          googleCalendarId: true,
         },
       }),
     ]);
+
+    const apartmentIds = apartments.map((apartment) => apartment.id);
+
+    const [apartmentReservations, apartmentCalendarBlocks, apartmentPricingRules] =
+      apartmentIds.length === 0
+        ? [[], [], []]
+        : await Promise.all([
+            db.reservation.findMany({
+              where: {
+                apartmentId: {
+                  in: apartmentIds,
+                },
+                status: {
+                  in: [
+                    ReservationStatus.PENDING_PAYMENT,
+                    ReservationStatus.CONFIRMED,
+                    ReservationStatus.MANUAL_BLOCK,
+                  ],
+                },
+                checkInDate: {
+                  lte: monthEnd,
+                },
+                checkOutDate: {
+                  gt: monthStart,
+                },
+              },
+              select: {
+                apartmentId: true,
+                reservationNumber: true,
+                checkInDate: true,
+                checkOutDate: true,
+              },
+              orderBy: {
+                checkInDate: "asc",
+              },
+            }),
+            db.calendarBlock.findMany({
+              where: {
+                apartmentId: {
+                  in: apartmentIds,
+                },
+                dateFrom: {
+                  lte: monthEnd,
+                },
+                dateTo: {
+                  gte: monthStart,
+                },
+              },
+              select: {
+                id: true,
+                apartmentId: true,
+                dateFrom: true,
+                dateTo: true,
+                reason: true,
+              },
+              orderBy: {
+                dateFrom: "asc",
+              },
+            }),
+            db.pricingRule.findMany({
+              where: {
+                apartmentId: {
+                  in: apartmentIds,
+                },
+                isActive: true,
+              },
+              select: {
+                id: true,
+                apartmentId: true,
+                name: true,
+                ruleType: true,
+                dateFrom: true,
+                dateTo: true,
+                pricePerNight: true,
+                minimumNights: true,
+                priority: true,
+                isActive: true,
+              },
+              orderBy: [
+                {
+                  priority: "desc",
+                },
+                {
+                  dateFrom: "asc",
+                },
+              ],
+            }),
+          ]);
+
+    const reservationsByApartment = new Map<
+      string,
+      {
+        reservationNumber: string;
+        checkInDate: Date;
+        checkOutDate: Date;
+      }[]
+    >();
+    const calendarBlocksByApartment = new Map<
+      string,
+      {
+        id: string;
+        dateFrom: Date;
+        dateTo: Date;
+        reason: string | null;
+      }[]
+    >();
+    const pricingRulesByApartment = new Map<
+      string,
+      DashboardPricingRuleRecord[]
+    >();
+
+    for (const reservation of apartmentReservations) {
+      const current = reservationsByApartment.get(reservation.apartmentId) ?? [];
+      current.push({
+        reservationNumber: reservation.reservationNumber,
+        checkInDate: reservation.checkInDate,
+        checkOutDate: reservation.checkOutDate,
+      });
+      reservationsByApartment.set(reservation.apartmentId, current);
+    }
+
+    for (const block of apartmentCalendarBlocks) {
+      const current = calendarBlocksByApartment.get(block.apartmentId) ?? [];
+      current.push({
+        id: block.id,
+        dateFrom: block.dateFrom,
+        dateTo: block.dateTo,
+        reason: block.reason,
+      });
+      calendarBlocksByApartment.set(block.apartmentId, current);
+    }
+
+    for (const rule of apartmentPricingRules) {
+      const current = pricingRulesByApartment.get(rule.apartmentId) ?? [];
+      current.push({
+        id: rule.id,
+        name: rule.name,
+        ruleType: rule.ruleType,
+        dateFrom: rule.dateFrom,
+        dateTo: rule.dateTo,
+        pricePerNight: rule.pricePerNight,
+        minimumNights: rule.minimumNights,
+        priority: rule.priority,
+        isActive: rule.isActive,
+      });
+      pricingRulesByApartment.set(rule.apartmentId, current);
+    }
 
     let pendingReservationCount = 0;
     let confirmedReservationCount = 0;
@@ -295,9 +419,28 @@ export async function getAdminDashboardData(
           orderBy: {
             createdAt: "desc",
           },
-          include: {
-            apartment: true,
-            guest: true,
+          select: {
+            id: true,
+            reservationNumber: true,
+            checkInDate: true,
+            checkOutDate: true,
+            status: true,
+            paymentStatus: true,
+            totalAmount: true,
+            amountToPayNow: true,
+            currency: true,
+            createdAt: true,
+            apartment: {
+              select: {
+                name: true,
+              },
+            },
+            guest: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
         }),
         db.payment.findMany({
@@ -315,10 +458,22 @@ export async function getAdminDashboardData(
               in: [PaymentStatus.CREATED, PaymentStatus.LINK_SENT, PaymentStatus.PENDING],
             },
           },
-          include: {
+          select: {
+            id: true,
+            amount: true,
+            currency: true,
+            status: true,
+            paymentExpiresAt: true,
+            paymentUrl: true,
             reservation: {
-              include: {
-                guest: true,
+              select: {
+                reservationNumber: true,
+                guest: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
               },
             },
           },
@@ -389,44 +544,55 @@ export async function getAdminDashboardData(
       ],
       recentReservations,
       attentionPayments,
-      apartments: apartments.map((apartment) => ({
-        id: apartment.id,
-        name: apartment.name,
-        slug: apartment.slug,
-        city: apartment.city,
-        address: apartment.address,
-        description: apartment.description,
-        maxGuests: apartment.maxGuests,
-        basePricePerNight: Number(apartment.basePricePerNight),
-        cleaningFee: Number(apartment.cleaningFee),
-        depositAmount: Number(apartment.depositAmount),
-        minimumNights: apartment.minimumNights,
-        defaultCheckInTime: apartment.defaultCheckInTime,
-        defaultCheckOutTime: apartment.defaultCheckOutTime,
-        isActive: apartment.isActive,
-        googleCalendarId: apartment.googleCalendarId,
-        calendarBlocks: apartment.calendarBlocks.map((block) => ({
-          id: block.id,
-          dateFrom: formatDate(block.dateFrom),
-          dateTo: formatDate(block.dateTo),
-          reason: block.reason,
-        })),
-        occupancyDates: buildOccupancyDates(
-          apartment.reservations,
-          apartment.calendarBlocks,
-        ),
-        pricingRules: apartment.pricingRules.map((rule) => ({
-          id: rule.id,
-          name: rule.name,
-          ruleType: rule.ruleType,
-          dateFrom: formatDate(rule.dateFrom),
-          dateTo: formatDate(rule.dateTo),
-          pricePerNight: Number(rule.pricePerNight),
-          minimumNights: rule.minimumNights,
-          priority: rule.priority,
-          isActive: rule.isActive,
-        })),
-      })),
+      apartments: apartments.map((apartment) => {
+        const apartmentReservationsForCard =
+          reservationsByApartment.get(apartment.id) ?? [];
+        const apartmentCalendarBlocksForCard =
+          calendarBlocksByApartment.get(apartment.id) ?? [];
+        const apartmentPricingRulesForCard =
+          pricingRulesByApartment.get(apartment.id) ?? [];
+
+        return {
+          id: apartment.id,
+          name: apartment.name,
+          slug: apartment.slug,
+          city: apartment.city,
+          address: apartment.address,
+          description: apartment.description,
+          maxGuests: apartment.maxGuests,
+          basePricePerNight: Number(apartment.basePricePerNight),
+          cleaningFee: Number(apartment.cleaningFee),
+          depositAmount: Number(apartment.depositAmount),
+          minimumNights: apartment.minimumNights,
+          defaultCheckInTime: apartment.defaultCheckInTime,
+          defaultCheckOutTime: apartment.defaultCheckOutTime,
+          isActive: apartment.isActive,
+          googleCalendarId: apartment.googleCalendarId,
+          calendarBlocks: apartmentCalendarBlocksForCard
+            .slice(0, 6)
+            .map((block) => ({
+              id: block.id,
+              dateFrom: formatDate(block.dateFrom),
+              dateTo: formatDate(block.dateTo),
+              reason: block.reason,
+            })),
+          occupancyDates: buildOccupancyDates(
+            apartmentReservationsForCard,
+            apartmentCalendarBlocksForCard,
+          ),
+          pricingRules: apartmentPricingRulesForCard.slice(0, 8).map((rule) => ({
+            id: rule.id,
+            name: rule.name,
+            ruleType: rule.ruleType,
+            dateFrom: formatDate(rule.dateFrom),
+            dateTo: formatDate(rule.dateTo),
+            pricePerNight: Number(rule.pricePerNight),
+            minimumNights: rule.minimumNights,
+            priority: rule.priority,
+            isActive: rule.isActive,
+          })),
+        };
+      }),
       warningMessage,
     };
   } catch (error) {
