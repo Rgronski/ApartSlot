@@ -15,6 +15,7 @@ import { deleteCalendarBlock } from "@/services/admin/delete-calendar-block";
 import { deletePricingRule } from "@/services/admin/delete-pricing-rule";
 import { getGoogleCalendarIntegrationStatus } from "@/services/calendar/get-google-calendar-integration-status";
 import {
+  type AdminDashboardData,
   formatDashboardMoney,
   getAdminDashboardData,
 } from "@/services/admin/get-admin-dashboard-data";
@@ -95,6 +96,8 @@ type AdminPageProps = {
   }>;
 };
 
+type ReadyDashboardApartment = Extract<AdminDashboardData, { state: "ready" }>["apartments"][number];
+
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = searchParams ? await searchParams : undefined;
   const monthCalendar = buildMonthView(params?.month);
@@ -119,6 +122,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const activeApartmentsForCalendar =
     dashboard.state === "ready"
       ? dashboard.apartments.filter((apartment) => apartment.isActive)
+      : [];
+  const activeApartmentsForManagement =
+    dashboard.state === "ready"
+      ? dashboard.apartments.filter((apartment) => apartment.isActive)
+      : [];
+  const inactiveApartmentsForManagement =
+    dashboard.state === "ready"
+      ? dashboard.apartments.filter((apartment) => !apartment.isActive)
       : [];
   const googleCalendarStatus =
     dashboard.state === "ready"
@@ -148,6 +159,492 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           ? error.message
           : "Nie udalo sie policzyc podgladu ceny.";
     }
+  }
+
+  function renderApartmentManagementCard(apartment: ReadyDashboardApartment) {
+    return (
+      <article className="admin-row-card" id={`apartment-editor-${apartment.id}`} key={apartment.id}>
+        <div className="admin-row-top">
+          <div>
+            <h3>{apartment.name}</h3>
+            <p>{apartment.city ?? "Miasto nieuzupelnione"}</p>
+          </div>
+          <span
+            className={
+              apartment.isActive
+                ? "status-badge status-badge--success"
+                : "status-badge status-badge--danger"
+            }
+          >
+            {apartment.isActive ? "Aktywny" : "Nieaktywny"}
+          </span>
+        </div>
+        <p className="inline-meta">
+          Cena bazowa: {formatDashboardMoney(apartment.basePricePerNight, "PLN")}
+        </p>
+        <p className="inline-meta">
+          Min. noclegi: {apartment.minimumNights} | Max gosci: {apartment.maxGuests}
+        </p>
+        <p className="inline-meta">
+          Google Calendar:{" "}
+          {apartment.googleCalendarId ? "podlaczony w rekordzie apartamentu" : "brak ID kalendarza"}
+        </p>
+
+        <details className="admin-details">
+          <summary>Edytuj dane apartamentu</summary>
+
+          <form action={updateApartmentAction} className="admin-form admin-form--nested">
+            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+            <div className="admin-form-grid">
+              <label className="admin-field">
+                <span>Nazwa apartamentu</span>
+                <input name="name" type="text" required defaultValue={apartment.name} />
+              </label>
+
+              <label className="admin-field">
+                <span>Slug</span>
+                <input name="slug" type="text" defaultValue={apartment.slug} />
+              </label>
+
+              <label className="admin-field">
+                <span>Miasto</span>
+                <input name="city" type="text" defaultValue={apartment.city ?? ""} />
+              </label>
+
+              <label className="admin-field">
+                <span>Adres</span>
+                <input name="address" type="text" defaultValue={apartment.address ?? ""} />
+              </label>
+
+              <label className="admin-field">
+                <span>Maksymalna liczba gosci</span>
+                <input name="maxGuests" type="number" min="1" step="1" required defaultValue={String(apartment.maxGuests)} />
+              </label>
+
+              <label className="admin-field">
+                <span>Cena bazowa za noc (PLN)</span>
+                <input name="basePricePerNight" type="number" min="0" step="0.01" required defaultValue={String(apartment.basePricePerNight)} />
+              </label>
+
+              <label className="admin-field">
+                <span>Sprzatanie (PLN)</span>
+                <input name="cleaningFee" type="number" min="0" step="0.01" required defaultValue={String(apartment.cleaningFee)} />
+              </label>
+
+              <label className="admin-field">
+                <span>Kaucja (PLN)</span>
+                <input name="depositAmount" type="number" min="0" step="0.01" required defaultValue={String(apartment.depositAmount)} />
+              </label>
+
+              <label className="admin-field">
+                <span>Minimalna liczba nocy</span>
+                <input name="minimumNights" type="number" min="1" step="1" required defaultValue={String(apartment.minimumNights)} />
+              </label>
+
+              <label className="admin-field">
+                <span>Check-in</span>
+                <input name="defaultCheckInTime" type="text" defaultValue={apartment.defaultCheckInTime ?? ""} />
+              </label>
+
+              <label className="admin-field">
+                <span>Check-out</span>
+                <input name="defaultCheckOutTime" type="text" defaultValue={apartment.defaultCheckOutTime ?? ""} />
+              </label>
+
+              <label className="admin-field">
+                <span>Google Calendar ID</span>
+                <input name="googleCalendarId" type="text" defaultValue={apartment.googleCalendarId ?? ""} />
+              </label>
+            </div>
+
+            <label className="admin-field">
+              <span>Opis</span>
+              <textarea name="description" rows={3} defaultValue={apartment.description ?? ""} />
+            </label>
+
+            <label className="admin-toggle">
+              <input
+                name="isActive"
+                type="checkbox"
+                defaultChecked={apartment.isActive}
+              />
+              <span>Apartament jest aktywny i widoczny w sprzedazy</span>
+            </label>
+
+            <div className="admin-form-actions">
+              <button className="cta-button" type="submit">
+                Zapisz zmiany
+              </button>
+            </div>
+          </form>
+        </details>
+
+        <details className="admin-details admin-details--danger">
+          <summary>Usun apartament</summary>
+
+          <form action={deleteApartmentAction} className="admin-form admin-form--nested">
+            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+            <div className="inline-notice inline-notice--danger">
+              <p>
+                Apartament mozna usunac tylko wtedy, gdy nie ma jeszcze zadnych rezerwacji.
+                Reguly cenowe i reczne blokady zostana skasowane razem z nim.
+              </p>
+            </div>
+
+            <div className="admin-form-actions">
+              <button className="cta-button cta-button--danger" type="submit">
+                Potwierdz usuniecie
+              </button>
+            </div>
+          </form>
+        </details>
+
+        <details className="admin-details">
+          <summary>Dodaj cene specjalna</summary>
+
+          <form action={createPricingRuleAction} className="admin-form admin-form--nested">
+            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+            <div className="admin-form-grid">
+              <label className="admin-field">
+                <span>Nazwa reguly</span>
+                <input
+                  name="name"
+                  type="text"
+                  required
+                  placeholder="Np. Weekend wakacyjny"
+                />
+              </label>
+
+              <label className="admin-field">
+                <span>Typ reguly</span>
+                <select name="ruleType" defaultValue={PricingRuleType.SEASONAL}>
+                  <option value={PricingRuleType.SEASONAL}>Sezon</option>
+                  <option value={PricingRuleType.WEEKEND}>Weekend</option>
+                  <option value={PricingRuleType.EVENT}>Event</option>
+                  <option value={PricingRuleType.CUSTOM}>Wlasna</option>
+                </select>
+              </label>
+
+              <label className="admin-field">
+                <span>Data od</span>
+                <input name="dateFrom" type="date" required />
+              </label>
+
+              <label className="admin-field">
+                <span>Data do</span>
+                <input name="dateTo" type="date" required />
+              </label>
+
+              <label className="admin-field">
+                <span>Nowa cena za noc (PLN)</span>
+                <input name="pricePerNight" type="number" min="0" step="0.01" required />
+              </label>
+
+              <label className="admin-field">
+                <span>Minimalna liczba nocy</span>
+                <input name="minimumNights" type="number" min="1" step="1" placeholder="Opcjonalnie" />
+              </label>
+
+              <label className="admin-field">
+                <span>Priorytet</span>
+                <input
+                  name="priority"
+                  type="number"
+                  min="0"
+                  step="1"
+                  defaultValue="10"
+                />
+              </label>
+            </div>
+
+            <p className="admin-form-note">
+              Wyzszy priorytet wygrywa, gdy kilka regul pasuje do tej samej nocy.
+            </p>
+
+            <div className="admin-form-actions">
+              <button className="cta-button" type="submit">
+                Dodaj regule cenowa
+              </button>
+            </div>
+          </form>
+        </details>
+
+        <details
+          className="admin-details"
+          open={previewApartmentId === apartment.id}
+          id={`pricing-preview-${apartment.id}`}
+        >
+          <summary>Sprawdz kalkulacje ceny</summary>
+
+          <form action={previewPricingRuleAction} className="admin-form admin-form--nested">
+            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+            <div className="admin-form-grid admin-form-grid--compact">
+              <label className="admin-field">
+                <span>Przyjazd</span>
+                <input
+                  name="checkInDate"
+                  type="date"
+                  required
+                  defaultValue={
+                    previewApartmentId === apartment.id
+                      ? previewCheckInDate ?? ""
+                      : ""
+                  }
+                />
+              </label>
+
+              <label className="admin-field">
+                <span>Wyjazd</span>
+                <input
+                  name="checkOutDate"
+                  type="date"
+                  required
+                  defaultValue={
+                    previewApartmentId === apartment.id
+                      ? previewCheckOutDate ?? ""
+                      : ""
+                  }
+                />
+              </label>
+            </div>
+
+            <div className="admin-form-actions">
+              <button className="cta-button" type="submit">
+                Policz cene pobytu
+              </button>
+            </div>
+          </form>
+
+          {previewApartmentId === apartment.id && pricingPreviewError ? (
+            <div className="inline-notice inline-notice--danger">
+              <p>{pricingPreviewError}</p>
+            </div>
+          ) : null}
+
+          {previewApartmentId === apartment.id && pricingPreview ? (
+            <article className="pricing-preview-card pricing-preview-card--active">
+              <h3>Podglad kalkulacji</h3>
+              <p className="inline-meta">
+                Nocy: {pricingPreview.nightsCount}
+              </p>
+              <p className="inline-meta">
+                Noclegi: {formatDashboardMoney(pricingPreview.accommodationAmount, pricingPreview.currency)}
+              </p>
+              <p className="inline-meta">
+                Sprzatanie: {formatDashboardMoney(pricingPreview.cleaningFee, pricingPreview.currency)}
+              </p>
+              <p className="inline-meta">
+                Kaucja: {formatDashboardMoney(pricingPreview.depositAmount, pricingPreview.currency)}
+              </p>
+              <p className="inline-meta pricing-preview-total">
+                Razem: {formatDashboardMoney(pricingPreview.totalAmount, pricingPreview.currency)}
+              </p>
+
+              <div className="admin-stack">
+                {pricingPreview.nightlyBreakdown.map((night) => (
+                  <article className="pricing-preview-night" key={night.date}>
+                    <div className="admin-row-top">
+                      <div>
+                        <h3>{night.date}</h3>
+                        <p>
+                          {night.source === "pricing_rule"
+                            ? `Regula: ${night.pricingRuleName ?? "specjalna cena"}`
+                            : "Cena bazowa"}
+                        </p>
+                      </div>
+                      <span className="status-badge status-badge--warning">
+                        {formatDashboardMoney(night.pricePerNight, pricingPreview.currency)}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </article>
+          ) : null}
+        </details>
+
+        <details className="admin-details">
+          <summary>Dodaj reczna blokade terminu</summary>
+
+          <form action={createCalendarBlockAction} className="admin-form admin-form--nested">
+            <input name="apartmentId" type="hidden" value={apartment.id} />
+
+            <div className="admin-form-grid admin-form-grid--compact">
+              <label className="admin-field">
+                <span>Data od</span>
+                <input name="dateFrom" type="date" required />
+              </label>
+
+              <label className="admin-field">
+                <span>Data do</span>
+                <input name="dateTo" type="date" required />
+              </label>
+            </div>
+
+            <label className="admin-field">
+              <span>Powod blokady</span>
+              <input
+                name="reason"
+                type="text"
+                placeholder="Np. pobyt wlasciciela, serwis, remont"
+              />
+            </label>
+
+            <div className="admin-form-actions">
+              <button className="cta-button" type="submit">
+                Zapisz blokade
+              </button>
+            </div>
+          </form>
+        </details>
+
+        <div className="pricing-rule-list">
+          <p className="pricing-rule-list-title">Aktywne reguly cenowe</p>
+          {apartment.pricingRules.length === 0 ? (
+            <p className="inline-meta">
+              Brak dodatkowych cen. System uzyje ceny bazowej.
+            </p>
+          ) : (
+            <div className="admin-stack">
+              {apartment.pricingRules.map((rule) => (
+                <article className="pricing-rule-card" key={rule.id}>
+                  <div className="admin-row-top">
+                    <div>
+                      <h3>{rule.name}</h3>
+                      <p>
+                        {pricingRuleTypeLabels[rule.ruleType]} | {rule.dateFrom} - {rule.dateTo}
+                      </p>
+                    </div>
+                    <span className="status-badge status-badge--warning">
+                      Priorytet {rule.priority}
+                    </span>
+                  </div>
+                  <p className="inline-meta">
+                    Cena: {formatDashboardMoney(rule.pricePerNight, "PLN")}
+                  </p>
+                  <p className="inline-meta">
+                    Minimalna liczba nocy: {rule.minimumNights ?? "bez limitu"}
+                  </p>
+                  {rule.ruleType === PricingRuleType.WEEKEND ? (
+                    <p className="inline-meta">
+                      Regula weekendowa dziala dla piatku i soboty.
+                    </p>
+                  ) : null}
+
+                  <details className="admin-details admin-details--flat">
+                    <summary>Edytuj te regule</summary>
+
+                    <form action={updatePricingRuleAction} className="admin-form admin-form--nested">
+                      <input name="pricingRuleId" type="hidden" value={rule.id} />
+
+                      <div className="admin-form-grid">
+                        <label className="admin-field">
+                          <span>Nazwa reguly</span>
+                          <input name="name" type="text" required defaultValue={rule.name} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Typ reguly</span>
+                          <select name="ruleType" defaultValue={rule.ruleType}>
+                            <option value={PricingRuleType.SEASONAL}>Sezon</option>
+                            <option value={PricingRuleType.WEEKEND}>Weekend</option>
+                            <option value={PricingRuleType.EVENT}>Event</option>
+                            <option value={PricingRuleType.CUSTOM}>Wlasna</option>
+                          </select>
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Data od</span>
+                          <input name="dateFrom" type="date" required defaultValue={rule.dateFrom} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Data do</span>
+                          <input name="dateTo" type="date" required defaultValue={rule.dateTo} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Cena za noc (PLN)</span>
+                          <input name="pricePerNight" type="number" min="0" step="0.01" required defaultValue={String(rule.pricePerNight)} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Minimalna liczba nocy</span>
+                          <input name="minimumNights" type="number" min="1" step="1" defaultValue={rule.minimumNights ?? ""} />
+                        </label>
+
+                        <label className="admin-field">
+                          <span>Priorytet</span>
+                          <input name="priority" type="number" min="0" step="1" required defaultValue={String(rule.priority)} />
+                        </label>
+                      </div>
+
+                      <label className="admin-toggle">
+                        <input
+                          name="isActive"
+                          type="checkbox"
+                          defaultChecked={rule.isActive}
+                        />
+                        <span>Regula jest aktywna</span>
+                      </label>
+
+                      <div className="admin-form-actions">
+                        <button className="cta-button" type="submit">
+                          Zapisz regule
+                        </button>
+                      </div>
+                    </form>
+
+                    <form action={deletePricingRuleAction} className="admin-inline-form">
+                      <input name="pricingRuleId" type="hidden" value={rule.id} />
+                      <button className="cta-button cta-button--danger" type="submit">
+                        Wylacz te regule
+                      </button>
+                    </form>
+                  </details>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="pricing-rule-list">
+          <p className="pricing-rule-list-title">Reczne blokady terminow</p>
+          {apartment.calendarBlocks.length === 0 ? (
+            <p className="inline-meta">
+              Brak recznych blokad dla tego apartamentu.
+            </p>
+          ) : (
+            <div className="admin-stack">
+              {apartment.calendarBlocks.map((block) => (
+                <article className="pricing-rule-card" key={block.id}>
+                  <div className="admin-row-top">
+                    <div>
+                      <h3>{block.dateFrom} - {block.dateTo}</h3>
+                      <p>{block.reason ?? "Blokada reczna bez opisu"}</p>
+                    </div>
+                    <span className="status-badge status-badge--danger">
+                      Zablokowane
+                    </span>
+                  </div>
+
+                  <form action={deleteCalendarBlockAction} className="admin-inline-form">
+                    <input name="calendarBlockId" type="hidden" value={block.id} />
+                    <button className="cta-button cta-button--danger" type="submit">
+                      Usun blokade
+                    </button>
+                  </form>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </article>
+    );
   }
 
   async function createApartmentAction(formData: FormData) {
@@ -983,489 +1480,41 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <p>Nie ma jeszcze zadnego apartamentu w bazie.</p>
                 ) : (
                   <div className="admin-stack">
-                    {dashboard.apartments.map((apartment) => (
-                      <article className="admin-row-card" id={`apartment-editor-${apartment.id}`} key={apartment.id}>
-                        <div className="admin-row-top">
-                          <div>
-                            <h3>{apartment.name}</h3>
-                            <p>{apartment.city ?? "Miasto nieuzupelnione"}</p>
-                          </div>
-                          <span
-                            className={
-                              apartment.isActive
-                                ? "status-badge status-badge--success"
-                                : "status-badge status-badge--danger"
-                            }
-                          >
-                            {apartment.isActive ? "Aktywny" : "Nieaktywny"}
-                          </span>
+                    <div className="admin-subsection">
+                      <div className="section-heading section-heading--compact">
+                        <div>
+                          <p className="eyebrow">Apartamenty aktywne</p>
+                          <h3>Obiekty gotowe do sprzedazy i obslugi</h3>
                         </div>
-                        <p className="inline-meta">
-                          Cena bazowa: {formatDashboardMoney(apartment.basePricePerNight, "PLN")}
-                        </p>
-                        <p className="inline-meta">
-                          Min. noclegi: {apartment.minimumNights} | Max gosci: {apartment.maxGuests}
-                        </p>
-                        <p className="inline-meta">
-                          Google Calendar:{" "}
-                          {apartment.googleCalendarId ? "podlaczony w rekordzie apartamentu" : "brak ID kalendarza"}
-                        </p>
-
-                        <details className="admin-details">
-                          <summary>Edytuj dane apartamentu</summary>
-
-                          <form action={updateApartmentAction} className="admin-form admin-form--nested">
-                            <input name="apartmentId" type="hidden" value={apartment.id} />
-
-                            <div className="admin-form-grid">
-                              <label className="admin-field">
-                                <span>Nazwa apartamentu</span>
-                                <input name="name" type="text" required defaultValue={apartment.name} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Slug</span>
-                                <input name="slug" type="text" defaultValue={apartment.slug} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Miasto</span>
-                                <input name="city" type="text" defaultValue={apartment.city ?? ""} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Adres</span>
-                                <input name="address" type="text" defaultValue={apartment.address ?? ""} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Maksymalna liczba gosci</span>
-                                <input name="maxGuests" type="number" min="1" step="1" required defaultValue={String(apartment.maxGuests)} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Cena bazowa za noc (PLN)</span>
-                                <input name="basePricePerNight" type="number" min="0" step="0.01" required defaultValue={String(apartment.basePricePerNight)} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Sprzatanie (PLN)</span>
-                                <input name="cleaningFee" type="number" min="0" step="0.01" required defaultValue={String(apartment.cleaningFee)} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Kaucja (PLN)</span>
-                                <input name="depositAmount" type="number" min="0" step="0.01" required defaultValue={String(apartment.depositAmount)} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Minimalna liczba nocy</span>
-                                <input name="minimumNights" type="number" min="1" step="1" required defaultValue={String(apartment.minimumNights)} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Check-in</span>
-                                <input name="defaultCheckInTime" type="text" defaultValue={apartment.defaultCheckInTime ?? ""} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Check-out</span>
-                                <input name="defaultCheckOutTime" type="text" defaultValue={apartment.defaultCheckOutTime ?? ""} />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Google Calendar ID</span>
-                                <input name="googleCalendarId" type="text" defaultValue={apartment.googleCalendarId ?? ""} />
-                              </label>
-                            </div>
-
-                            <label className="admin-field">
-                              <span>Opis</span>
-                              <textarea name="description" rows={3} defaultValue={apartment.description ?? ""} />
-                            </label>
-
-                            <label className="admin-toggle">
-                              <input
-                                name="isActive"
-                                type="checkbox"
-                                defaultChecked={apartment.isActive}
-                              />
-                              <span>Apartament jest aktywny i widoczny w sprzedazy</span>
-                            </label>
-
-                            <div className="admin-form-actions">
-                              <button className="cta-button" type="submit">
-                                Zapisz zmiany
-                              </button>
-                            </div>
-                          </form>
-                        </details>
-
-                        <details className="admin-details admin-details--danger">
-                          <summary>Usun apartament</summary>
-
-                          <form action={deleteApartmentAction} className="admin-form admin-form--nested">
-                            <input name="apartmentId" type="hidden" value={apartment.id} />
-
-                            <div className="inline-notice inline-notice--danger">
-                              <p>
-                                Apartament mozna usunac tylko wtedy, gdy nie ma jeszcze zadnych rezerwacji.
-                                Reguly cenowe i reczne blokady zostana skasowane razem z nim.
-                              </p>
-                            </div>
-
-                            <div className="admin-form-actions">
-                              <button className="cta-button cta-button--danger" type="submit">
-                                Potwierdz usuniecie
-                              </button>
-                            </div>
-                          </form>
-                        </details>
-
-                        <details className="admin-details">
-                          <summary>Dodaj cene specjalna</summary>
-
-                          <form action={createPricingRuleAction} className="admin-form admin-form--nested">
-                            <input name="apartmentId" type="hidden" value={apartment.id} />
-
-                            <div className="admin-form-grid">
-                              <label className="admin-field">
-                                <span>Nazwa reguly</span>
-                                <input
-                                  name="name"
-                                  type="text"
-                                  required
-                                  placeholder="Np. Weekend wakacyjny"
-                                />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Typ reguly</span>
-                                <select name="ruleType" defaultValue={PricingRuleType.SEASONAL}>
-                                  <option value={PricingRuleType.SEASONAL}>Sezon</option>
-                                  <option value={PricingRuleType.WEEKEND}>Weekend</option>
-                                  <option value={PricingRuleType.EVENT}>Event</option>
-                                  <option value={PricingRuleType.CUSTOM}>Wlasna</option>
-                                </select>
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Data od</span>
-                                <input name="dateFrom" type="date" required />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Data do</span>
-                                <input name="dateTo" type="date" required />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Nowa cena za noc (PLN)</span>
-                                <input name="pricePerNight" type="number" min="0" step="0.01" required />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Minimalna liczba nocy</span>
-                                <input name="minimumNights" type="number" min="1" step="1" placeholder="Opcjonalnie" />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Priorytet</span>
-                                <input
-                                  name="priority"
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  defaultValue="10"
-                                />
-                              </label>
-                            </div>
-
-                            <p className="admin-form-note">
-                              Wyzszy priorytet wygrywa, gdy kilka regul pasuje do tej samej nocy.
-                            </p>
-
-                            <div className="admin-form-actions">
-                              <button className="cta-button" type="submit">
-                                Dodaj regule cenowa
-                              </button>
-                            </div>
-                          </form>
-                        </details>
-
-                        <details
-                          className="admin-details"
-                          open={previewApartmentId === apartment.id}
-                          id={`pricing-preview-${apartment.id}`}
-                        >
-                          <summary>Sprawdz kalkulacje ceny</summary>
-
-                          <form action={previewPricingRuleAction} className="admin-form admin-form--nested">
-                            <input name="apartmentId" type="hidden" value={apartment.id} />
-
-                            <div className="admin-form-grid admin-form-grid--compact">
-                              <label className="admin-field">
-                                <span>Przyjazd</span>
-                                <input
-                                  name="checkInDate"
-                                  type="date"
-                                  required
-                                  defaultValue={
-                                    previewApartmentId === apartment.id
-                                      ? previewCheckInDate ?? ""
-                                      : ""
-                                  }
-                                />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Wyjazd</span>
-                                <input
-                                  name="checkOutDate"
-                                  type="date"
-                                  required
-                                  defaultValue={
-                                    previewApartmentId === apartment.id
-                                      ? previewCheckOutDate ?? ""
-                                      : ""
-                                  }
-                                />
-                              </label>
-                            </div>
-
-                            <div className="admin-form-actions">
-                              <button className="cta-button" type="submit">
-                                Policz cene pobytu
-                              </button>
-                            </div>
-                          </form>
-
-                          {previewApartmentId === apartment.id && pricingPreviewError ? (
-                            <div className="inline-notice inline-notice--danger">
-                              <p>{pricingPreviewError}</p>
-                            </div>
-                          ) : null}
-
-                          {previewApartmentId === apartment.id && pricingPreview ? (
-                            <article className="pricing-preview-card pricing-preview-card--active">
-                              <h3>Podglad kalkulacji</h3>
-                              <p className="inline-meta">
-                                Nocy: {pricingPreview.nightsCount}
-                              </p>
-                              <p className="inline-meta">
-                                Noclegi: {formatDashboardMoney(pricingPreview.accommodationAmount, pricingPreview.currency)}
-                              </p>
-                              <p className="inline-meta">
-                                Sprzatanie: {formatDashboardMoney(pricingPreview.cleaningFee, pricingPreview.currency)}
-                              </p>
-                              <p className="inline-meta">
-                                Kaucja: {formatDashboardMoney(pricingPreview.depositAmount, pricingPreview.currency)}
-                              </p>
-                              <p className="inline-meta pricing-preview-total">
-                                Razem: {formatDashboardMoney(pricingPreview.totalAmount, pricingPreview.currency)}
-                              </p>
-
-                              <div className="admin-stack">
-                                {pricingPreview.nightlyBreakdown.map((night) => (
-                                  <article className="pricing-preview-night" key={night.date}>
-                                    <div className="admin-row-top">
-                                      <div>
-                                        <h3>{night.date}</h3>
-                                        <p>
-                                          {night.source === "pricing_rule"
-                                            ? `Regula: ${night.pricingRuleName ?? "specjalna cena"}`
-                                            : "Cena bazowa"}
-                                        </p>
-                                      </div>
-                                      <span className="status-badge status-badge--warning">
-                                        {formatDashboardMoney(night.pricePerNight, pricingPreview.currency)}
-                                      </span>
-                                    </div>
-                                  </article>
-                                ))}
-                              </div>
-                            </article>
-                          ) : null}
-                        </details>
-
-                        <details className="admin-details">
-                          <summary>Dodaj reczna blokade terminu</summary>
-
-                          <form action={createCalendarBlockAction} className="admin-form admin-form--nested">
-                            <input name="apartmentId" type="hidden" value={apartment.id} />
-
-                            <div className="admin-form-grid admin-form-grid--compact">
-                              <label className="admin-field">
-                                <span>Data od</span>
-                                <input name="dateFrom" type="date" required />
-                              </label>
-
-                              <label className="admin-field">
-                                <span>Data do</span>
-                                <input name="dateTo" type="date" required />
-                              </label>
-                            </div>
-
-                            <label className="admin-field">
-                              <span>Powod blokady</span>
-                              <input
-                                name="reason"
-                                type="text"
-                                placeholder="Np. pobyt wlasciciela, serwis, remont"
-                              />
-                            </label>
-
-                            <div className="admin-form-actions">
-                              <button className="cta-button" type="submit">
-                                Zapisz blokade
-                              </button>
-                            </div>
-                          </form>
-                        </details>
-
-                        <div className="pricing-rule-list">
-                          <p className="pricing-rule-list-title">Aktywne reguly cenowe</p>
-                          {apartment.pricingRules.length === 0 ? (
-                            <p className="inline-meta">
-                              Brak dodatkowych cen. System uzyje ceny bazowej.
-                            </p>
-                          ) : (
-                            <div className="admin-stack">
-                              {apartment.pricingRules.map((rule) => (
-                                <article className="pricing-rule-card" key={rule.id}>
-                                  <div className="admin-row-top">
-                                    <div>
-                                      <h3>{rule.name}</h3>
-                                      <p>
-                                        {pricingRuleTypeLabels[rule.ruleType]} | {rule.dateFrom} - {rule.dateTo}
-                                      </p>
-                                    </div>
-                                    <span className="status-badge status-badge--warning">
-                                      Priorytet {rule.priority}
-                                    </span>
-                                  </div>
-                                  <p className="inline-meta">
-                                    Cena: {formatDashboardMoney(rule.pricePerNight, "PLN")}
-                                  </p>
-                                  <p className="inline-meta">
-                                    Minimalna liczba nocy: {rule.minimumNights ?? "bez limitu"}
-                                  </p>
-                                  {rule.ruleType === PricingRuleType.WEEKEND ? (
-                                    <p className="inline-meta">
-                                      Regula weekendowa dziala dla piatku i soboty.
-                                    </p>
-                                  ) : null}
-
-                                  <details className="admin-details admin-details--flat">
-                                    <summary>Edytuj te regule</summary>
-
-                                    <form action={updatePricingRuleAction} className="admin-form admin-form--nested">
-                                      <input name="pricingRuleId" type="hidden" value={rule.id} />
-
-                                      <div className="admin-form-grid">
-                                        <label className="admin-field">
-                                          <span>Nazwa reguly</span>
-                                          <input name="name" type="text" required defaultValue={rule.name} />
-                                        </label>
-
-                                        <label className="admin-field">
-                                          <span>Typ reguly</span>
-                                          <select name="ruleType" defaultValue={rule.ruleType}>
-                                            <option value={PricingRuleType.SEASONAL}>Sezon</option>
-                                            <option value={PricingRuleType.WEEKEND}>Weekend</option>
-                                            <option value={PricingRuleType.EVENT}>Event</option>
-                                            <option value={PricingRuleType.CUSTOM}>Wlasna</option>
-                                          </select>
-                                        </label>
-
-                                        <label className="admin-field">
-                                          <span>Data od</span>
-                                          <input name="dateFrom" type="date" required defaultValue={rule.dateFrom} />
-                                        </label>
-
-                                        <label className="admin-field">
-                                          <span>Data do</span>
-                                          <input name="dateTo" type="date" required defaultValue={rule.dateTo} />
-                                        </label>
-
-                                        <label className="admin-field">
-                                          <span>Cena za noc (PLN)</span>
-                                          <input name="pricePerNight" type="number" min="0" step="0.01" required defaultValue={String(rule.pricePerNight)} />
-                                        </label>
-
-                                        <label className="admin-field">
-                                          <span>Minimalna liczba nocy</span>
-                                          <input name="minimumNights" type="number" min="1" step="1" defaultValue={rule.minimumNights ?? ""} />
-                                        </label>
-
-                                        <label className="admin-field">
-                                          <span>Priorytet</span>
-                                          <input name="priority" type="number" min="0" step="1" required defaultValue={String(rule.priority)} />
-                                        </label>
-                                      </div>
-
-                                      <label className="admin-toggle">
-                                        <input
-                                          name="isActive"
-                                          type="checkbox"
-                                          defaultChecked={rule.isActive}
-                                        />
-                                        <span>Regula jest aktywna</span>
-                                      </label>
-
-                                      <div className="admin-form-actions">
-                                        <button className="cta-button" type="submit">
-                                          Zapisz regule
-                                        </button>
-                                      </div>
-                                    </form>
-
-                                    <form action={deletePricingRuleAction} className="admin-inline-form">
-                                      <input name="pricingRuleId" type="hidden" value={rule.id} />
-                                      <button className="cta-button cta-button--danger" type="submit">
-                                        Wylacz te regule
-                                      </button>
-                                    </form>
-                                  </details>
-                                </article>
-                              ))}
-                            </div>
+                      </div>
+                      {activeApartmentsForManagement.length === 0 ? (
+                        <p>Nie ma teraz zadnego aktywnego apartamentu.</p>
+                      ) : (
+                        <div className="admin-stack">
+                          {activeApartmentsForManagement.map((apartment) =>
+                            renderApartmentManagementCard(apartment),
                           )}
                         </div>
+                      )}
+                    </div>
 
-                        <div className="pricing-rule-list">
-                          <p className="pricing-rule-list-title">Reczne blokady terminow</p>
-                          {apartment.calendarBlocks.length === 0 ? (
-                            <p className="inline-meta">
-                              Brak recznych blokad dla tego apartamentu.
-                            </p>
-                          ) : (
-                            <div className="admin-stack">
-                              {apartment.calendarBlocks.map((block) => (
-                                <article className="pricing-rule-card" key={block.id}>
-                                  <div className="admin-row-top">
-                                    <div>
-                                      <h3>{block.dateFrom} - {block.dateTo}</h3>
-                                      <p>{block.reason ?? "Blokada reczna bez opisu"}</p>
-                                    </div>
-                                    <span className="status-badge status-badge--danger">
-                                      Zablokowane
-                                    </span>
-                                  </div>
-
-                                  <form action={deleteCalendarBlockAction} className="admin-inline-form">
-                                    <input name="calendarBlockId" type="hidden" value={block.id} />
-                                    <button className="cta-button cta-button--danger" type="submit">
-                                      Usun blokade
-                                    </button>
-                                  </form>
-                                </article>
-                              ))}
-                            </div>
+                    <div className="admin-subsection">
+                      <div className="section-heading section-heading--compact">
+                        <div>
+                          <p className="eyebrow">Apartamenty nieaktywne</p>
+                          <h3>Obiekty ukryte ze sprzedazy, ale zachowane w systemie</h3>
+                        </div>
+                      </div>
+                      {inactiveApartmentsForManagement.length === 0 ? (
+                        <p>Nie ma teraz zadnego nieaktywnego apartamentu.</p>
+                      ) : (
+                        <div className="admin-stack">
+                          {inactiveApartmentsForManagement.map((apartment) =>
+                            renderApartmentManagementCard(apartment),
                           )}
                         </div>
-                      </article>
-                    ))}
+                      )}
+                    </div>
                   </div>
                 )}
               </article>
