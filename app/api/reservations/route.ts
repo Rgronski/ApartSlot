@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { DomainError } from "@/lib/errors/domain-error";
+import { sendReservationCreatedEmail } from "@/services/email/send-reservation-created-email";
 import { createOnlineReservationWithPrisma } from "@/services/reservations";
 
 type ReservationApiRequestBody = {
@@ -219,6 +220,15 @@ export async function POST(request: NextRequest) {
       guest: parsed.guest,
     });
 
+    const emailResult = await sendReservationCreatedEmail(result.reservationDraft.id);
+
+    if (emailResult.status === "failed") {
+      console.error("Reservation created email could not be sent", {
+        reservationId: result.reservationDraft.id,
+        reason: emailResult.reason,
+      });
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -238,6 +248,9 @@ export async function POST(request: NextRequest) {
           expiresAt: result.paymentDraft.paymentExpiresAt,
         },
         summary: result.summary,
+        notifications: {
+          reservationEmailStatus: emailResult.status,
+        },
       },
       {
         status: 201,

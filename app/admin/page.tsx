@@ -735,6 +735,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   async function cancelReservationAction(formData: FormData) {
     "use server";
 
+    let nextStatus = "reservation_cancelled";
+    let nextMessage = "";
+
     try {
       const result = await cancelReservation(
         readString(formData, "reservationId"),
@@ -748,25 +751,25 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       );
 
       if (emailResult.status !== "sent") {
-        const warningMessage =
+        nextStatus = "warning";
+        nextMessage =
           emailResult.status === "skipped"
             ? `Rezerwacja zostala anulowana, ale mail nie zostal wyslany: ${emailResult.reason}`
             : `Rezerwacja zostala anulowana, ale mail zakonczyl sie bledem: ${emailResult.reason}`;
-
-        redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(warningMessage)}`);
       }
     } catch (error) {
-      const errorMessage =
+      nextStatus = "error";
+      nextMessage =
         error instanceof DomainError
           ? error.message
           : "Nie udalo sie anulowac rezerwacji. Sprobuj ponownie.";
-
-      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
 
     revalidatePath("/admin");
     revalidatePath("/");
-    redirect(`/admin?${adminMonthQuery}&status=reservation_cancelled`);
+    redirect(
+      `/admin?${adminMonthQuery}&status=${nextStatus}${nextMessage ? `&message=${encodeURIComponent(nextMessage)}` : ""}`,
+    );
   }
 
   async function createPricingRuleAction(formData: FormData) {
@@ -994,6 +997,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         {status === "reservation_cancelled" ? (
           <div className="inline-notice inline-notice--success">
             <p>Rezerwacja zostala anulowana poprawnie.</p>
+          </div>
+        ) : null}
+
+        {status === "warning" ? (
+          <div className="inline-notice">
+            <p>{message ?? "Operacja zakonczyla sie z ostrzezeniem."}</p>
           </div>
         ) : null}
 
@@ -1475,13 +1484,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <div className="admin-row-top">
                       <div>
                         <h3>Po utworzeniu rezerwacji</h3>
-                        <p>Klient przechodzi od formularza do ekranu platnosci.</p>
+                        <p>Klient dostaje automatyczny e-mail z podsumowaniem i linkiem do platnosci.</p>
                       </div>
-                      <span className="status-badge status-badge--warning">W trakcie rozbudowy</span>
+                      <span className="status-badge status-badge--success">Aktywne</span>
                     </div>
                     <p className="inline-meta">
-                      Ten etap mamy przygotowany funkcjonalnie, ale tresc osobnego maila po samym
-                      zlozeniu rezerwacji jeszcze dopracujemy.
+                      Wiadomosc potwierdza zapis rezerwacji, podaje kwote do zaplaty i prowadzi klienta do kolejnego kroku.
                     </p>
                   </article>
 
@@ -1618,7 +1626,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <ul className="admin-checklist">
                   <li>Rezerwacja reczna z poziomu panelu.</li>
                   <li>Podglad kalendarza miesiecznego dla apartamentu.</li>
-                  <li>Osobny mail po samym zlozeniu rezerwacji, jeszcze przed platnoscia.</li>
                   <li>Gotowe szablony wiadomosci do edycji przez operatora.</li>
                   <li>Docelowo logowanie administratora.</li>
                 </ul>
