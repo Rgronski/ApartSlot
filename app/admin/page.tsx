@@ -19,6 +19,7 @@ import {
   formatDashboardMoney,
   getAdminDashboardData,
 } from "@/services/admin/get-admin-dashboard-data";
+import { retryEmailLog } from "@/services/email/retry-email-log";
 import { sendReservationCancelledEmail } from "@/services/email/send-reservation-cancelled-email";
 import { previewPricingCalculation } from "@/services/admin/preview-pricing-calculation";
 import { updateApartment } from "@/services/admin/update-apartment";
@@ -949,6 +950,33 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     redirect(`/admin?${adminMonthQuery}&status=block_deleted`);
   }
 
+  async function retryEmailLogAction(formData: FormData) {
+    "use server";
+
+    try {
+      const result = await retryEmailLog(readString(formData, "emailLogId"));
+
+      if (result.status !== "sent") {
+        const nextMessage =
+          result.status === "skipped"
+            ? `Mail nie zostal ponowiony: ${result.reason}`
+            : `Nie udalo sie ponowic wysylki maila: ${result.reason}`;
+
+        redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(nextMessage)}`);
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie ponowic wysylki maila. Sprobuj ponownie.";
+
+      redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
+    }
+
+    revalidatePath("/admin");
+    redirect(`/admin?${adminMonthQuery}&status=email_retried`);
+  }
+
   return (
     <main className="admin-shell">
       <section className="admin-hero">
@@ -1088,6 +1116,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         {status === "block_deleted" ? (
           <div className="inline-notice inline-notice--success">
             <p>Blokada terminu zostala usunieta.</p>
+          </div>
+        ) : null}
+
+        {status === "email_retried" ? (
+          <div className="inline-notice inline-notice--success">
+            <p>Mail zostal ponownie wyslany poprawnie.</p>
           </div>
         ) : null}
 
@@ -1668,7 +1702,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <p>Nie ma jeszcze zapisanej historii maili.</p>
                 ) : (
                   <div className="admin-stack">
-                    {dashboard.recentEmailLogs.map((emailLog) => (
+                      {dashboard.recentEmailLogs.map((emailLog) => (
                       <article className="admin-row-card" key={emailLog.id}>
                         <div className="admin-row-top">
                           <div>
@@ -1694,6 +1728,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                           <p className="inline-meta">
                             Ostatni blad: {emailLog.errorMessage}
                           </p>
+                        ) : null}
+                        {emailLog.status === EmailLogStatus.FAILED ? (
+                          <form action={retryEmailLogAction} className="admin-inline-form">
+                            <input name="emailLogId" type="hidden" value={emailLog.id} />
+                            <button className="cta-button" type="submit">
+                              Ponow wysylke
+                            </button>
+                          </form>
                         ) : null}
                       </article>
                     ))}

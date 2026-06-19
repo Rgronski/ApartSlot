@@ -565,6 +565,10 @@ a {
   margin-top: 12px;
 }
 
+.admin-inline-form {
+  margin-top: 14px;
+}
+
 .inline-link a {
   color: var(--accent-dark);
   font-weight: 600;
