@@ -1,4 +1,5 @@
 import {
+  EmailLogStatus,
   PaymentStatus,
   PricingRuleType,
   ReservationStatus,
@@ -38,6 +39,19 @@ type DashboardAttentionPayment = {
   status: PaymentStatus;
   expiresAt: string | null;
   paymentUrl: string | null;
+};
+
+type DashboardEmailLog = {
+  id: string;
+  type: string;
+  recipientEmail: string;
+  subject: string;
+  status: EmailLogStatus;
+  reservationNumber: string | null;
+  guestName: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  errorMessage: string | null;
 };
 
 type DashboardPricingRuleRecord = {
@@ -97,6 +111,7 @@ export type AdminDashboardData =
       state: "ready";
       metrics: DashboardMetric[];
       recentReservations: DashboardReservation[];
+      recentEmailLogs: DashboardEmailLog[];
       attentionPayments: DashboardAttentionPayment[];
       apartments: DashboardApartment[];
       warningMessage?: string;
@@ -418,6 +433,7 @@ export async function getAdminDashboardData(
     let confirmedReservationCount = 0;
     let pendingPaymentCount = 0;
     let recentReservations: DashboardReservation[] = [];
+    let recentEmailLogs: DashboardEmailLog[] = [];
     let attentionPayments: DashboardAttentionPayment[] = [];
     let warningMessage: string | undefined;
 
@@ -427,6 +443,7 @@ export async function getAdminDashboardData(
         confirmedReservations,
         pendingPayments,
         reservations,
+        emailLogs,
         payments,
       ] = await Promise.all([
         db.reservation.count({
@@ -465,6 +482,33 @@ export async function getAdminDashboardData(
             apartment: {
               select: {
                 name: true,
+              },
+            },
+            guest: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        }),
+        db.emailLog.findMany({
+          take: 10,
+          orderBy: {
+            createdAt: "desc",
+          },
+          select: {
+            id: true,
+            type: true,
+            recipientEmail: true,
+            subject: true,
+            status: true,
+            errorMessage: true,
+            createdAt: true,
+            sentAt: true,
+            reservation: {
+              select: {
+                reservationNumber: true,
               },
             },
             guest: {
@@ -529,6 +573,20 @@ export async function getAdminDashboardData(
         currency: reservation.currency,
         createdAt: formatDateTime(reservation.createdAt),
       }));
+      recentEmailLogs = emailLogs.map((emailLog) => ({
+        id: emailLog.id,
+        type: emailLog.type,
+        recipientEmail: emailLog.recipientEmail,
+        subject: emailLog.subject,
+        status: emailLog.status,
+        reservationNumber: emailLog.reservation?.reservationNumber ?? null,
+        guestName: emailLog.guest
+          ? `${emailLog.guest.firstName} ${emailLog.guest.lastName}`
+          : null,
+        createdAt: formatDateTime(emailLog.createdAt),
+        sentAt: emailLog.sentAt ? formatDateTime(emailLog.sentAt) : null,
+        errorMessage: emailLog.errorMessage,
+      }));
       attentionPayments = payments.map((payment) => ({
         id: payment.id,
         reservationNumber: payment.reservation.reservationNumber,
@@ -575,6 +633,7 @@ export async function getAdminDashboardData(
         },
       ],
       recentReservations,
+      recentEmailLogs,
       attentionPayments,
       apartments: apartments.map((apartment) => {
         const apartmentReservationsForCard =

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { PricingRuleType } from "@prisma/client";
+import { EmailLogStatus, PricingRuleType } from "@prisma/client";
 
 import { APP_VERSION } from "@/lib/app-version";
 import { buildMonthView, WEEK_DAY_LABELS } from "@/lib/calendar/month-view";
@@ -47,12 +47,36 @@ const pricingRuleTypeLabels: Record<PricingRuleType, string> = {
   CUSTOM: "Wlasna",
 };
 
+const emailTypeLabels: Record<string, string> = {
+  RESERVATION_CREATED: "Nowa rezerwacja",
+  RESERVATION_CONFIRMED: "Potwierdzenie platnosci",
+  RESERVATION_CANCELLED: "Anulowanie rezerwacji",
+};
+
+const emailStatusLabels: Record<EmailLogStatus, string> = {
+  PENDING: "W trakcie",
+  SENT: "Wyslana",
+  FAILED: "Blad",
+};
+
 function getBadgeClass(status: string) {
   if (status === "CONFIRMED" || status === "PAID" || status === "COMPLETED") {
     return "status-badge status-badge--success";
   }
 
   if (status === "CANCELLED" || status === "FAILED" || status === "EXPIRED") {
+    return "status-badge status-badge--danger";
+  }
+
+  return "status-badge status-badge--warning";
+}
+
+function getEmailBadgeClass(status: EmailLogStatus) {
+  if (status === EmailLogStatus.SENT) {
+    return "status-badge status-badge--success";
+  }
+
+  if (status === EmailLogStatus.FAILED) {
     return "status-badge status-badge--danger";
   }
 
@@ -1519,6 +1543,51 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     </p>
                   </article>
                 </div>
+              </article>
+
+              <article className="admin-card admin-panel-card">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">Wiadomosci</p>
+                    <h2>Historia wysylek</h2>
+                  </div>
+                </div>
+
+                {dashboard.recentEmailLogs.length === 0 ? (
+                  <p>Nie ma jeszcze zapisanej historii maili.</p>
+                ) : (
+                  <div className="admin-stack">
+                    {dashboard.recentEmailLogs.map((emailLog) => (
+                      <article className="admin-row-card" key={emailLog.id}>
+                        <div className="admin-row-top">
+                          <div>
+                            <h3>{emailTypeLabels[emailLog.type] ?? emailLog.type}</h3>
+                            <p>{emailLog.recipientEmail}</p>
+                          </div>
+                          <span className={getEmailBadgeClass(emailLog.status)}>
+                            {emailStatusLabels[emailLog.status] ?? emailLog.status}
+                          </span>
+                        </div>
+                        <p className="inline-meta">
+                          Rezerwacja: {emailLog.reservationNumber ?? "brak numeru"}
+                        </p>
+                        <p className="inline-meta">
+                          Klient: {emailLog.guestName ?? "brak danych klienta"}
+                        </p>
+                        <p className="inline-meta">Temat: {emailLog.subject}</p>
+                        <p className="inline-meta">Dodano do kolejki: {emailLog.createdAt}</p>
+                        <p className="inline-meta">
+                          Wyslano: {emailLog.sentAt ?? "nie potwierdzono jeszcze wysylki"}
+                        </p>
+                        {emailLog.errorMessage ? (
+                          <p className="inline-meta">
+                            Ostatni blad: {emailLog.errorMessage}
+                          </p>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                )}
               </article>
 
               <article className="admin-card admin-panel-card">
