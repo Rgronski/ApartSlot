@@ -139,6 +139,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() &&
       process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.trim(),
   );
+  const resendApiKeyReady = Boolean(process.env.RESEND_API_KEY?.trim());
+  const resendFromEmailReady = Boolean(process.env.RESEND_FROM_EMAIL?.trim());
+  const resendReady = resendApiKeyReady && resendFromEmailReady;
+  const stripeSecretKeyReady = Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+  const stripeWebhookSecretReady = Boolean(process.env.STRIPE_WEBHOOK_SECRET?.trim());
+  const stripeReady = stripeSecretKeyReady && stripeWebhookSecretReady;
+  const appBaseUrl = process.env.APP_BASE_URL?.trim() || null;
   const adminMonthQuery = `month=${encodeURIComponent(monthCalendar.monthParam)}`;
   const apartmentsWithCalendarIds =
     dashboard.state === "ready"
@@ -981,6 +988,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <a className="admin-section-link" href="#sekcja-apartamenty">
           Apartamenty
         </a>
+        <a className="admin-section-link" href="#sekcja-ustawienia">
+          Ustawienia
+        </a>
       </nav>
 
       <section className="admin-card admin-form-card" id="sekcja-kalendarz">
@@ -1514,6 +1524,86 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     )}
                   </div>
                 )}
+              </article>
+
+              <article className="admin-card admin-panel-card" id="sekcja-ustawienia">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">Ustawienia systemu</p>
+                    <h2>Gotowosc operacyjna</h2>
+                  </div>
+                </div>
+
+                <div className="admin-stack">
+                  <article className="admin-row-card">
+                    <div className="admin-row-top">
+                      <div>
+                        <h3>Resend</h3>
+                        <p>Wysylka maili automatycznych do klienta.</p>
+                      </div>
+                      <span
+                        className={
+                          resendReady
+                            ? "status-badge status-badge--success"
+                            : "status-badge status-badge--danger"
+                        }
+                      >
+                        {resendReady ? "Gotowe" : "Braki"}
+                      </span>
+                    </div>
+                    <p className="inline-meta">
+                      Klucz API: {resendApiKeyReady ? "ustawiony" : "brakuje"}
+                    </p>
+                    <p className="inline-meta">
+                      Adres nadawcy: {resendFromEmailReady ? "ustawiony" : "brakuje"}
+                    </p>
+                  </article>
+
+                  <article className="admin-row-card">
+                    <div className="admin-row-top">
+                      <div>
+                        <h3>Stripe</h3>
+                        <p>Platnosci online i potwierdzenia przez webhook.</p>
+                      </div>
+                      <span
+                        className={
+                          stripeReady
+                            ? "status-badge status-badge--success"
+                            : "status-badge status-badge--danger"
+                        }
+                      >
+                        {stripeReady ? "Gotowe" : "Braki"}
+                      </span>
+                    </div>
+                    <p className="inline-meta">
+                      Klucz Stripe: {stripeSecretKeyReady ? "ustawiony" : "brakuje"}
+                    </p>
+                    <p className="inline-meta">
+                      Webhook Stripe: {stripeWebhookSecretReady ? "ustawiony" : "brakuje"}
+                    </p>
+                  </article>
+
+                  <article className="admin-row-card">
+                    <div className="admin-row-top">
+                      <div>
+                        <h3>Adres aplikacji</h3>
+                        <p>Adres potrzebny do linkow platnosci i przekierowan.</p>
+                      </div>
+                      <span
+                        className={
+                          appBaseUrl
+                            ? "status-badge status-badge--success"
+                            : "status-badge status-badge--danger"
+                        }
+                      >
+                        {appBaseUrl ? "Gotowe" : "Brak"}
+                      </span>
+                    </div>
+                    <p className="inline-meta">
+                      APP_BASE_URL: {appBaseUrl ?? "nie ustawiono"}
+                    </p>
+                  </article>
+                </div>
               </article>
 
               <article className="admin-card admin-panel-card" id="sekcja-wiadomosci">
