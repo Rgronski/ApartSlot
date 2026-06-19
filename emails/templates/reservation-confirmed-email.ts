@@ -21,15 +21,26 @@ function formatMoney(amount: number, currency: string) {
 export function buildReservationConfirmedEmailTemplate(
   input: ReservationConfirmedEmailTemplateInput,
 ) {
-  const subject = `Potwierdzenie rezerwacji ${input.reservationNumber}`;
+  const isFullyPaid = input.paidAmount >= input.totalAmount;
+  const remainingAmount = Math.max(input.totalAmount - input.paidAmount, 0);
+  const subject = isFullyPaid
+    ? `Potwierdzenie pelnej platnosci ${input.reservationNumber}`
+    : `Potwierdzenie wplaty do rezerwacji ${input.reservationNumber}`;
+  const title = isFullyPaid ? "Dziekujemy za pelna platnosc" : "Dziekujemy za wplate";
+  const lead = isFullyPaid
+    ? `Czesc ${input.guestFirstName}, Twoja rezerwacja zostala potwierdzona i oplacona w calosci.`
+    : `Czesc ${input.guestFirstName}, zarejestrowalismy wplate do Twojej rezerwacji.`;
+  const paymentLabel = isFullyPaid
+    ? "Kwota potwierdzonej platnosci"
+    : "Kwota potwierdzonej wplaty";
 
   const html = `
     <div style="font-family: Georgia, 'Times New Roman', serif; background:#fcf6ed; color:#2a2118; padding:32px;">
       <div style="max-width:680px; margin:0 auto; background:#fffaf2; border:1px solid rgba(120,88,56,0.14); border-radius:24px; padding:32px;">
-        <p style="margin:0 0 12px; color:#8a5419; letter-spacing:0.18em; text-transform:uppercase; font-size:12px;">Rezerwacja potwierdzona</p>
-        <h1 style="margin:0 0 18px; font-size:36px; line-height:1.05;">Dziekujemy za platnosc</h1>
+        <p style="margin:0 0 12px; color:#8a5419; letter-spacing:0.18em; text-transform:uppercase; font-size:12px;">Potwierdzenie platnosci</p>
+        <h1 style="margin:0 0 18px; font-size:36px; line-height:1.05;">${title}</h1>
         <p style="margin:0 0 18px; color:#6f6052; line-height:1.7;">
-          Czesc ${input.guestFirstName}, Twoja rezerwacja zostala potwierdzona.
+          ${lead}
         </p>
 
         <div style="margin-top:24px; padding:20px; background:#f6f1e8; border-radius:18px;">
@@ -39,7 +50,12 @@ export function buildReservationConfirmedEmailTemplate(
           <p style="margin:0 0 10px;"><strong>Liczba nocy:</strong> ${input.nightsCount}</p>
           <p style="margin:0 0 10px;"><strong>Liczba gosci:</strong> ${input.guestsCount}</p>
           <p style="margin:0 0 10px;"><strong>Kwota calkowita:</strong> ${formatMoney(input.totalAmount, input.currency)}</p>
-          <p style="margin:0;"><strong>Kwota potwierdzonej platnosci:</strong> ${formatMoney(input.paidAmount, input.currency)}</p>
+          <p style="margin:0 0 10px;"><strong>${paymentLabel}:</strong> ${formatMoney(input.paidAmount, input.currency)}</p>
+          ${
+            isFullyPaid
+              ? ""
+              : `<p style="margin:0;"><strong>Pozostalo do rozliczenia:</strong> ${formatMoney(remainingAmount, input.currency)}</p>`
+          }
         </div>
 
         <p style="margin:24px 0 0; color:#6f6052; line-height:1.7;">
@@ -50,16 +66,19 @@ export function buildReservationConfirmedEmailTemplate(
   `;
 
   const text = [
-    "Rezerwacja potwierdzona",
+    "Potwierdzenie platnosci",
     "",
-    `Czesc ${input.guestFirstName}, Twoja rezerwacja zostala potwierdzona.`,
+    lead,
     `Numer rezerwacji: ${input.reservationNumber}`,
     `Apartament: ${input.apartmentName}`,
     `Termin: ${input.checkInDate} - ${input.checkOutDate}`,
     `Liczba nocy: ${input.nightsCount}`,
     `Liczba gosci: ${input.guestsCount}`,
     `Kwota calkowita: ${formatMoney(input.totalAmount, input.currency)}`,
-    `Kwota potwierdzonej platnosci: ${formatMoney(input.paidAmount, input.currency)}`,
+    `${paymentLabel}: ${formatMoney(input.paidAmount, input.currency)}`,
+    ...(isFullyPaid
+      ? []
+      : [`Pozostalo do rozliczenia: ${formatMoney(remainingAmount, input.currency)}`]),
   ].join("\n");
 
   return {

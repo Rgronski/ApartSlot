@@ -1,11 +1,11 @@
 import type { PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
-import { buildReservationConfirmedEmailTemplate } from "@/emails/templates/reservation-confirmed-email";
+import { buildReservationCancelledEmailTemplate } from "@/emails/templates/reservation-cancelled-email";
 
 import { sendLoggedEmail } from "./send-logged-email";
 
-type SendReservationConfirmedEmailResult =
+type SendReservationCancelledEmailResult =
   | {
       status: "sent";
       reservationId: string;
@@ -27,10 +27,11 @@ function formatDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-export async function sendReservationConfirmedEmail(
+export async function sendReservationCancelledEmail(
   reservationId: string,
+  cancellationReason: string,
   db: PrismaClient = prisma,
-): Promise<SendReservationConfirmedEmailResult> {
+): Promise<SendReservationCancelledEmailResult> {
   const reservation = await db.reservation.findUnique({
     where: {
       id: reservationId,
@@ -45,7 +46,7 @@ export async function sendReservationConfirmedEmail(
     return {
       status: "failed",
       reservationId,
-      reason: "Nie znaleziono rezerwacji do wysylki potwierdzenia e-mail.",
+      reason: "Nie znaleziono rezerwacji do wysylki maila o anulowaniu.",
     };
   }
 
@@ -57,24 +58,22 @@ export async function sendReservationConfirmedEmail(
     };
   }
 
-  const template = buildReservationConfirmedEmailTemplate({
+  const template = buildReservationCancelledEmailTemplate({
     guestFirstName: reservation.guest.firstName,
     apartmentName: reservation.apartment.name,
     checkInDate: formatDate(reservation.checkInDate),
     checkOutDate: formatDate(reservation.checkOutDate),
-    nightsCount: reservation.nightsCount,
-    guestsCount: reservation.guestsCount,
-    totalAmount: Number(reservation.totalAmount),
+    reservationNumber: reservation.reservationNumber,
+    cancellationReason,
     paidAmount: Number(reservation.paidAmount),
     currency: reservation.currency,
-    reservationNumber: reservation.reservationNumber,
   });
 
   const result = await sendLoggedEmail(
     {
       reservationId: reservation.id,
       guestId: reservation.guest.id,
-      type: "RESERVATION_CONFIRMED",
+      type: "RESERVATION_CANCELLED",
       recipientEmail: reservation.guest.email,
       subject: template.subject,
       html: template.html,
@@ -84,7 +83,7 @@ export async function sendReservationConfirmedEmail(
   );
 
   if (result.status === "failed") {
-    console.error("Reservation confirmed email failed", {
+    console.error("Reservation cancelled email failed", {
       reservationId,
       reason: result.reason,
     });

@@ -19,6 +19,7 @@ import {
   formatDashboardMoney,
   getAdminDashboardData,
 } from "@/services/admin/get-admin-dashboard-data";
+import { sendReservationCancelledEmail } from "@/services/email/send-reservation-cancelled-email";
 import { previewPricingCalculation } from "@/services/admin/preview-pricing-calculation";
 import { updateApartment } from "@/services/admin/update-apartment";
 import { updatePricingRule } from "@/services/admin/update-pricing-rule";
@@ -735,7 +736,25 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     "use server";
 
     try {
-      await cancelReservation(readString(formData, "reservationId"));
+      const result = await cancelReservation(
+        readString(formData, "reservationId"),
+        readString(formData, "cancellationReason"),
+        readString(formData, "operatorNote") || null,
+      );
+
+      const emailResult = await sendReservationCancelledEmail(
+        result.reservationId,
+        result.cancellationReason,
+      );
+
+      if (emailResult.status !== "sent") {
+        const warningMessage =
+          emailResult.status === "skipped"
+            ? `Rezerwacja zostala anulowana, ale mail nie zostal wyslany: ${emailResult.reason}`
+            : `Rezerwacja zostala anulowana, ale mail zakonczyl sie bledem: ${emailResult.reason}`;
+
+        redirect(`/admin?${adminMonthQuery}&status=error&message=${encodeURIComponent(warningMessage)}`);
+      }
     } catch (error) {
       const errorMessage =
         error instanceof DomainError
@@ -1335,6 +1354,25 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                               </p>
                             </div>
 
+                            <label className="admin-field">
+                              <span>Powod anulowania</span>
+                              <textarea
+                                name="cancellationReason"
+                                rows={3}
+                                required
+                                placeholder="Np. prosba klienta, brak kontaktu, zmiana terminu, blad testowy"
+                              />
+                            </label>
+
+                            <label className="admin-field">
+                              <span>Notatka operatora</span>
+                              <textarea
+                                name="operatorNote"
+                                rows={2}
+                                placeholder="Opcjonalnie: dodatkowy komentarz wewnetrzny."
+                              />
+                            </label>
+
                             <div className="admin-form-actions">
                               <button className="cta-button cta-button--danger" type="submit">
                                 Potwierdz anulowanie
@@ -1422,6 +1460,57 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     )}
                   </div>
                 )}
+              </article>
+
+              <article className="admin-card admin-panel-card">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">Wiadomosci</p>
+                    <h2>Automatyczne wiadomosci</h2>
+                  </div>
+                </div>
+
+                <div className="admin-stack">
+                  <article className="admin-row-card">
+                    <div className="admin-row-top">
+                      <div>
+                        <h3>Po utworzeniu rezerwacji</h3>
+                        <p>Klient przechodzi od formularza do ekranu platnosci.</p>
+                      </div>
+                      <span className="status-badge status-badge--warning">W trakcie rozbudowy</span>
+                    </div>
+                    <p className="inline-meta">
+                      Ten etap mamy przygotowany funkcjonalnie, ale tresc osobnego maila po samym
+                      zlozeniu rezerwacji jeszcze dopracujemy.
+                    </p>
+                  </article>
+
+                  <article className="admin-row-card">
+                    <div className="admin-row-top">
+                      <div>
+                        <h3>Po potwierdzeniu platnosci</h3>
+                        <p>System wysyla automatyczny e-mail po zapisaniu platnosci.</p>
+                      </div>
+                      <span className="status-badge status-badge--success">Aktywne</span>
+                    </div>
+                    <p className="inline-meta">
+                      Wiadomosc rozroznia teraz zaliczke i pelna platnosc za pobyt.
+                    </p>
+                  </article>
+
+                  <article className="admin-row-card">
+                    <div className="admin-row-top">
+                      <div>
+                        <h3>Po anulowaniu rezerwacji</h3>
+                        <p>Operator wpisuje powod, a klient dostaje automatyczne potwierdzenie.</p>
+                      </div>
+                      <span className="status-badge status-badge--success">Aktywne</span>
+                    </div>
+                    <p className="inline-meta">
+                      Powod anulowania trafia do maila dla klienta i do notatki administracyjnej w rezerwacji.
+                    </p>
+                  </article>
+                </div>
               </article>
 
               <article className="admin-card admin-panel-card">
@@ -1529,7 +1618,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <ul className="admin-checklist">
                   <li>Rezerwacja reczna z poziomu panelu.</li>
                   <li>Podglad kalendarza miesiecznego dla apartamentu.</li>
-                  <li>Automatyczne maile i dodatkowe statusy operatora.</li>
+                  <li>Osobny mail po samym zlozeniu rezerwacji, jeszcze przed platnoscia.</li>
+                  <li>Gotowe szablony wiadomosci do edycji przez operatora.</li>
                   <li>Docelowo logowanie administratora.</li>
                 </ul>
               </article>

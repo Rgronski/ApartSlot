@@ -59,12 +59,20 @@ async function deleteGoogleCalendarEventIfNeeded(input: {
 
 export async function cancelReservation(
   reservationId: string,
+  cancellationReason: string,
+  operatorNote: string | null,
   db: PrismaClient = prisma,
 ) {
   const normalizedReservationId = reservationId.trim();
+  const normalizedCancellationReason = cancellationReason.trim();
+  const normalizedOperatorNote = operatorNote?.trim() || null;
 
   if (!normalizedReservationId) {
     throw new DomainError("INVALID_RESERVATION_ID", "Brakuje identyfikatora rezerwacji.");
+  }
+
+  if (!normalizedCancellationReason) {
+    throw new DomainError("INVALID_CANCELLATION_REASON", "Powod anulowania jest wymagany.");
   }
 
   const reservation = await db.reservation.findUnique({
@@ -92,6 +100,14 @@ export async function cancelReservation(
   });
 
   const shouldCancelReservationPaymentStatus = reservation.paymentStatus !== PaymentStatus.PAID;
+  const cancellationNoteParts = [
+    `Anulowano: ${new Date().toISOString()}`,
+    `Powod anulowania: ${normalizedCancellationReason}`,
+    normalizedOperatorNote ? `Notatka operatora: ${normalizedOperatorNote}` : null,
+  ].filter(Boolean);
+  const nextAdminNotes = reservation.adminNotes?.trim()
+    ? `${reservation.adminNotes.trim()}\n\n${cancellationNoteParts.join("\n")}`
+    : cancellationNoteParts.join("\n");
 
   await db.$transaction([
     db.payment.updateMany({
@@ -116,6 +132,7 @@ export async function cancelReservation(
           : reservation.paymentStatus,
         cancelledAt: new Date(),
         calendarEventId: null,
+        adminNotes: nextAdminNotes,
       },
     }),
   ]);
@@ -123,5 +140,6 @@ export async function cancelReservation(
   return {
     reservationId: reservation.id,
     reservationNumber: reservation.reservationNumber,
+    cancellationReason: normalizedCancellationReason,
   };
 }
