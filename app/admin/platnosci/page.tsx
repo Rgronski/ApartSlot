@@ -86,7 +86,7 @@ export default async function AdminPaymentsPage({
         >
           Platnosci
         </Link>
-        <Link className="admin-section-link" href={`/admin?${adminMonthQuery}#sekcja-apartamenty`}>
+        <Link className="admin-section-link" href={`/admin/apartamenty?${adminMonthQuery}`}>
           Apartamenty
         </Link>
         <Link className="admin-section-link" href={`/admin?${adminMonthQuery}#sekcja-ustawienia`}>

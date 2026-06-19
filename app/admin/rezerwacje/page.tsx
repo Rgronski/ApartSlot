@@ -147,7 +147,7 @@ export default async function AdminReservationsPage({
         <Link className="admin-section-link" href={`/admin/platnosci?${adminMonthQuery}`}>
           Platnosci
         </Link>
-        <Link className="admin-section-link" href={`/admin?${adminMonthQuery}#sekcja-apartamenty`}>
+        <Link className="admin-section-link" href={`/admin/apartamenty?${adminMonthQuery}`}>
           Apartamenty
         </Link>
         <Link className="admin-section-link" href={`/admin?${adminMonthQuery}#sekcja-ustawienia`}>

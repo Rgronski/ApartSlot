@@ -1013,9 +1013,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <Link className="admin-section-link" href={`/admin/platnosci?${adminMonthQuery}`}>
           Platnosci
         </Link>
-        <a className="admin-section-link" href="#sekcja-apartamenty">
+        <Link className="admin-section-link" href={`/admin/apartamenty?${adminMonthQuery}`}>
           Apartamenty
-        </a>
+        </Link>
         <a className="admin-section-link" href="#sekcja-ustawienia">
           Ustawienia
         </a>
