@@ -959,7 +959,7 @@ export default async function AdminApartmentsPage({
         >
           Apartamenty
         </Link>
-        <Link className="admin-section-link" href={`/admin?${adminMonthQuery}#sekcja-ustawienia`}>
+        <Link className="admin-section-link" href={`/admin/ustawienia?${adminMonthQuery}`}>
           Ustawienia
         </Link>
       </nav>

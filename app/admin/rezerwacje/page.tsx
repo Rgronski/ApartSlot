@@ -150,7 +150,7 @@ export default async function AdminReservationsPage({
         <Link className="admin-section-link" href={`/admin/apartamenty?${adminMonthQuery}`}>
           Apartamenty
         </Link>
-        <Link className="admin-section-link" href={`/admin?${adminMonthQuery}#sekcja-ustawienia`}>
+        <Link className="admin-section-link" href={`/admin/ustawienia?${adminMonthQuery}`}>
           Ustawienia
         </Link>
       </nav>
