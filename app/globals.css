@@ -413,6 +413,47 @@ a {
   grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.95fr);
 }
 
+.admin-section-menu {
+  position: sticky;
+  top: 18px;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 18px;
+}
+
+.admin-section-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 250, 242, 0.92);
+  color: var(--accent-dark);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.admin-section-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(189, 123, 48, 0.35);
+  background: rgba(255, 247, 233, 0.96);
+}
+
+#sekcja-kalendarz,
+#sekcja-rezerwacje,
+#sekcja-integracje,
+#sekcja-wiadomosci,
+#sekcja-platnosci,
+#sekcja-apartamenty {
+  scroll-margin-top: 120px;
+}
+
 .admin-side-column {
   display: grid;
   gap: 20px;
@@ -878,5 +919,9 @@ a {
   .admin-hero,
   .admin-layout {
     grid-template-columns: 1fr;
+  }
+
+  .admin-section-menu {
+    top: 10px;
   }
 }

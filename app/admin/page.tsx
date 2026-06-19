@@ -962,7 +962,28 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
       </section>
 
-      <section className="admin-card admin-form-card">
+      <nav className="admin-card admin-section-menu" aria-label="Menu sekcji panelu administratora">
+        <a className="admin-section-link" href="#sekcja-kalendarz">
+          Kalendarz
+        </a>
+        <a className="admin-section-link" href="#sekcja-rezerwacje">
+          Rezerwacje
+        </a>
+        <a className="admin-section-link" href="#sekcja-integracje">
+          Integracje
+        </a>
+        <a className="admin-section-link" href="#sekcja-wiadomosci">
+          Wiadomosci
+        </a>
+        <a className="admin-section-link" href="#sekcja-platnosci">
+          Platnosci
+        </a>
+        <a className="admin-section-link" href="#sekcja-apartamenty">
+          Apartamenty
+        </a>
+      </nav>
+
+      <section className="admin-card admin-form-card" id="sekcja-kalendarz">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Apartamenty</p>
@@ -1311,7 +1332,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </section>
 
           <section className="admin-layout">
-            <article className="admin-card admin-panel-card">
+            <article className="admin-card admin-panel-card" id="sekcja-rezerwacje">
               <div className="section-heading">
                 <div>
                   <p className="eyebrow">Ostatnie rezerwacje</p>
@@ -1421,7 +1442,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             </article>
 
             <div className="admin-side-column">
-              <article className="admin-card admin-panel-card">
+              <article className="admin-card admin-panel-card" id="sekcja-integracje">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Google Calendar</p>
@@ -1495,7 +1516,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 )}
               </article>
 
-              <article className="admin-card admin-panel-card">
+              <article className="admin-card admin-panel-card" id="sekcja-wiadomosci">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Wiadomosci</p>
@@ -1590,7 +1611,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 )}
               </article>
 
-              <article className="admin-card admin-panel-card">
+              <article className="admin-card admin-panel-card" id="sekcja-platnosci">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Platnosci</p>
@@ -1634,7 +1655,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 )}
               </article>
 
-              <article className="admin-card admin-panel-card">
+              <article className="admin-card admin-panel-card" id="sekcja-apartamenty">
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Apartamenty i kalendarz</p>
