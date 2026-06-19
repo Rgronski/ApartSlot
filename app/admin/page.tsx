@@ -1379,192 +1379,100 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <article className="admin-card admin-panel-card" id="sekcja-rezerwacje">
               <div className="section-heading">
                 <div>
-                  <p className="eyebrow">Ostatnie rezerwacje</p>
-                  <h2>Co ostatnio wpadlo do systemu</h2>
+                  <p className="eyebrow">Dashboard</p>
+                  <h2>Co wymaga uwagi dzisiaj</h2>
                 </div>
               </div>
 
-              {dashboard.recentReservations.length === 0 ? (
-                <p>Brak rezerwacji w bazie. Gdy pojawia sie zamowienia, zobaczysz je tutaj.</p>
-              ) : (
-                <div className="admin-stack">
-                  {dashboard.recentReservations.map((reservation) => (
-                    <article className="admin-row-card" key={reservation.id}>
-                      <div className="admin-row-top">
-                        <div>
-                          <h3>{reservation.reservationNumber}</h3>
-                          <p>
-                            {reservation.apartmentName} | {reservation.guestName}
+              <div className="admin-stack">
+                <article className="admin-row-card">
+                  <div className="admin-row-top">
+                    <div>
+                      <h3>Rezerwacje</h3>
+                      <p>Podglad ostatnich zamowien i szybkie przejscie do obslugi.</p>
+                    </div>
+                    <Link className="cta-button" href={`/admin/rezerwacje?${adminMonthQuery}`}>
+                      Otworz
+                    </Link>
+                  </div>
+                  {dashboard.recentReservations.length === 0 ? (
+                    <p className="inline-meta">Brak nowych rezerwacji do pokazania.</p>
+                  ) : (
+                    <div className="admin-stack">
+                      {dashboard.recentReservations.slice(0, 3).map((reservation) => (
+                        <article className="pricing-rule-card" key={reservation.id}>
+                          <div className="admin-row-top">
+                            <div>
+                              <h3>{reservation.reservationNumber}</h3>
+                              <p>
+                                {reservation.apartmentName} | {reservation.guestName}
+                              </p>
+                            </div>
+                            <span className={getBadgeClass(reservation.status)}>
+                              {statusLabels[reservation.status] ?? reservation.status}
+                            </span>
+                          </div>
+                          <p className="inline-meta">
+                            Pobyt: {reservation.checkInDate} - {reservation.checkOutDate}
                           </p>
-                        </div>
-                        <div className="admin-badges">
-                          <span className={getBadgeClass(reservation.status)}>
-                            {statusLabels[reservation.status] ?? reservation.status}
-                          </span>
-                          <span className={getBadgeClass(reservation.paymentStatus)}>
-                            {statusLabels[reservation.paymentStatus] ?? reservation.paymentStatus}
-                          </span>
-                        </div>
-                      </div>
-
-                      <dl className="detail-list detail-list--compact">
-                        <div>
-                          <dt>Pobyt</dt>
-                          <dd>
-                            {reservation.checkInDate} - {reservation.checkOutDate}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Kwota calosci</dt>
-                          <dd>
-                            {formatDashboardMoney(
-                              reservation.totalAmount,
-                              reservation.currency,
-                            )}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Do zaplaty teraz</dt>
-                          <dd>
+                          <p className="inline-meta">
+                            Do zaplaty teraz:{" "}
                             {formatDashboardMoney(
                               reservation.amountToPayNow,
                               reservation.currency,
                             )}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Dodano</dt>
-                          <dd>{reservation.createdAt}</dd>
-                        </div>
-                      </dl>
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </article>
 
-                      {canReservationBeCancelled(reservation.status) ? (
-                        <details className="admin-details admin-details--danger">
-                          <summary>Anuluj rezerwacje</summary>
-
-                          <form action={cancelReservationAction} className="admin-form admin-form--nested">
-                            <input name="reservationId" type="hidden" value={reservation.id} />
-
-                            <div className="inline-notice inline-notice--danger">
-                              <p>
-                                Ta akcja ustawi rezerwacje jako anulowana, zatrzyma nieoplacone platnosci
-                                i sprobuje usunac wpis z Google Calendar.
-                              </p>
+                <article className="admin-row-card" id="sekcja-platnosci">
+                  <div className="admin-row-top">
+                    <div>
+                      <h3>Platnosci</h3>
+                      <p>Sprawdzisz linki platnosci i zamowienia oczekujace na finalizacje.</p>
+                    </div>
+                    <Link className="cta-button" href={`/admin/platnosci?${adminMonthQuery}`}>
+                      Otworz
+                    </Link>
+                  </div>
+                  {dashboard.attentionPayments.length === 0 ? (
+                    <p className="inline-meta">Nie ma platnosci wymagajacych uwagi.</p>
+                  ) : (
+                    <div className="admin-stack">
+                      {dashboard.attentionPayments.slice(0, 3).map((payment) => (
+                        <article className="pricing-rule-card" key={payment.id}>
+                          <div className="admin-row-top">
+                            <div>
+                              <h3>{payment.reservationNumber}</h3>
+                              <p>{payment.guestName}</p>
                             </div>
-
-                            <label className="admin-field">
-                              <span>Powod anulowania</span>
-                              <textarea
-                                name="cancellationReason"
-                                rows={3}
-                                required
-                                placeholder="Np. prosba klienta, brak kontaktu, zmiana terminu, blad testowy"
-                              />
-                            </label>
-
-                            <label className="admin-field">
-                              <span>Notatka operatora</span>
-                              <textarea
-                                name="operatorNote"
-                                rows={2}
-                                placeholder="Opcjonalnie: dodatkowy komentarz wewnetrzny."
-                              />
-                            </label>
-
-                            <div className="admin-form-actions">
-                              <button className="cta-button cta-button--danger" type="submit">
-                                Potwierdz anulowanie
-                              </button>
-                            </div>
-                          </form>
-                        </details>
-                      ) : null}
-                    </article>
-                  ))}
-                </div>
-              )}
+                            <span className={getBadgeClass(payment.status)}>
+                              {statusLabels[payment.status] ?? payment.status}
+                            </span>
+                          </div>
+                          <p className="inline-meta">
+                            Kwota: {formatDashboardMoney(payment.amount, payment.currency)}
+                          </p>
+                          <p className="inline-meta">
+                            Waznosc linku: {payment.expiresAt ?? "brak daty"}
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              </div>
             </article>
 
             <div className="admin-side-column">
               <article className="admin-card admin-panel-card" id="sekcja-integracje">
                 <div className="section-heading">
                   <div>
-                    <p className="eyebrow">Google Calendar</p>
-                    <h2>Status integracji</h2>
-                  </div>
-                </div>
-
-                {googleCalendarStatus === null ? (
-                  <p>Stan integracji pojawi sie po poprawnym odczycie danych z bazy.</p>
-                ) : (
-                  <div className="admin-stack">
-                    <article className="admin-row-card">
-                      <p className="inline-meta">
-                        Konto serwisowe:{" "}
-                        {googleCalendarStatus.serviceAccountReady
-                          ? "gotowe"
-                          : "brakuje danych w Vercel"}
-                      </p>
-                      <p className="inline-meta">
-                        Adres konta serwisowego:{" "}
-                        {googleCalendarStatus.serviceAccountEmail ?? "jeszcze nie wpisany"}
-                      </p>
-                      <p className="inline-meta">
-                        Fallback Calendar ID:{" "}
-                        {googleCalendarStatus.fallbackCalendarId ?? "brak"}
-                      </p>
-                    </article>
-
-                    {googleCalendarStatus.apartments.length === 0 ? (
-                      <p>Dodaj apartament, aby sprawdzic integracje kalendarza.</p>
-                    ) : (
-                      googleCalendarStatus.apartments.map((calendarStatus) => (
-                        <article className="admin-row-card" key={`google-status-${calendarStatus.apartmentId}`}>
-                          <div className="admin-row-top">
-                            <div>
-                              <h3>{calendarStatus.apartmentName}</h3>
-                              <p>{calendarStatus.calendarId ?? "Brak Calendar ID"}</p>
-                            </div>
-                            <span
-                              className={
-                                calendarStatus.status === "ok"
-                                  ? "status-badge status-badge--success"
-                                  : calendarStatus.status === "missing_calendar_id"
-                                    ? "status-badge status-badge--warning"
-                                    : "status-badge status-badge--danger"
-                              }
-                            >
-                              {calendarStatus.status === "ok"
-                                ? "Polaczony"
-                                : calendarStatus.status === "missing_calendar_id"
-                                  ? "Brak ID"
-                                  : calendarStatus.status === "missing_service_account"
-                                    ? "Brak konta"
-                                    : calendarStatus.status === "calendar_not_found"
-                                      ? "Nie znaleziono"
-                                      : calendarStatus.status === "access_denied"
-                                        ? "Brak dostepu"
-                                        : "Blad"}
-                            </span>
-                          </div>
-                          <p className="inline-meta">{calendarStatus.message}</p>
-                          {calendarStatus.resolvedCalendarName ? (
-                            <p className="inline-meta">
-                              Google widzi ten kalendarz jako: {calendarStatus.resolvedCalendarName}
-                            </p>
-                          ) : null}
-                        </article>
-                      ))
-                    )}
-                  </div>
-                )}
-              </article>
-
-              <article className="admin-card admin-panel-card" id="sekcja-ustawienia">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">Ustawienia systemu</p>
-                    <h2>Gotowosc operacyjna</h2>
+                    <p className="eyebrow">Integracje</p>
+                    <h2>Szybki stan systemu</h2>
                   </div>
                 </div>
 
@@ -1572,70 +1480,43 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <article className="admin-row-card">
                     <div className="admin-row-top">
                       <div>
-                        <h3>Resend</h3>
-                        <p>Wysylka maili automatycznych do klienta.</p>
+                        <h3>Google Calendar</h3>
+                        <p>Stan synchronizacji kalendarzy i konta serwisowego.</p>
                       </div>
-                      <span
-                        className={
-                          resendReady
-                            ? "status-badge status-badge--success"
-                            : "status-badge status-badge--danger"
-                        }
-                      >
-                        {resendReady ? "Gotowe" : "Braki"}
-                      </span>
+                      <Link className="cta-button" href={`/admin/ustawienia?${adminMonthQuery}`}>
+                        Szczegoly
+                      </Link>
                     </div>
                     <p className="inline-meta">
-                      Klucz API: {resendApiKeyReady ? "ustawiony" : "brakuje"}
+                      Konto serwisowe: {googleCalendarConfigReady ? "gotowe" : "brakuje"}
                     </p>
                     <p className="inline-meta">
-                      Adres nadawcy: {resendFromEmailReady ? "ustawiony" : "brakuje"}
+                      Apartamenty z Google ID: {apartmentsWithCalendarIds}
                     </p>
+                    {googleCalendarStatus?.apartments.some((item) => item.status !== "ok") ? (
+                      <p className="inline-meta">
+                        Co najmniej jeden apartament wymaga jeszcze dopiecia integracji.
+                      </p>
+                    ) : (
+                      <p className="inline-meta">
+                        Wszystkie widoczne integracje apartamentow wygladaja poprawnie.
+                      </p>
+                    )}
                   </article>
 
-                  <article className="admin-row-card">
+                  <article className="admin-row-card" id="sekcja-ustawienia">
                     <div className="admin-row-top">
                       <div>
-                        <h3>Stripe</h3>
-                        <p>Platnosci online i potwierdzenia przez webhook.</p>
+                        <h3>Ustawienia systemu</h3>
+                        <p>Resend, Stripe i adres aplikacji w jednym miejscu.</p>
                       </div>
-                      <span
-                        className={
-                          stripeReady
-                            ? "status-badge status-badge--success"
-                            : "status-badge status-badge--danger"
-                        }
-                      >
-                        {stripeReady ? "Gotowe" : "Braki"}
-                      </span>
+                      <Link className="cta-button" href={`/admin/ustawienia?${adminMonthQuery}`}>
+                        Otworz
+                      </Link>
                     </div>
-                    <p className="inline-meta">
-                      Klucz Stripe: {stripeSecretKeyReady ? "ustawiony" : "brakuje"}
-                    </p>
-                    <p className="inline-meta">
-                      Webhook Stripe: {stripeWebhookSecretReady ? "ustawiony" : "brakuje"}
-                    </p>
-                  </article>
-
-                  <article className="admin-row-card">
-                    <div className="admin-row-top">
-                      <div>
-                        <h3>Adres aplikacji</h3>
-                        <p>Adres potrzebny do linkow platnosci i przekierowan.</p>
-                      </div>
-                      <span
-                        className={
-                          appBaseUrl
-                            ? "status-badge status-badge--success"
-                            : "status-badge status-badge--danger"
-                        }
-                      >
-                        {appBaseUrl ? "Gotowe" : "Brak"}
-                      </span>
-                    </div>
-                    <p className="inline-meta">
-                      APP_BASE_URL: {appBaseUrl ?? "nie ustawiono"}
-                    </p>
+                    <p className="inline-meta">Resend: {resendReady ? "gotowe" : "braki"}</p>
+                    <p className="inline-meta">Stripe: {stripeReady ? "gotowe" : "braki"}</p>
+                    <p className="inline-meta">APP_BASE_URL: {appBaseUrl ? "ustawiony" : "brak"}</p>
                   </article>
                 </div>
               </article>
@@ -1644,7 +1525,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <div className="section-heading">
                   <div>
                     <p className="eyebrow">Wiadomosci</p>
-                    <h2>Automatyczne wiadomosci</h2>
+                    <h2>Historia i automatyzacje</h2>
                   </div>
                 </div>
 
@@ -1652,190 +1533,71 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <article className="admin-row-card">
                     <div className="admin-row-top">
                       <div>
-                        <h3>Po utworzeniu rezerwacji</h3>
-                        <p>Klient dostaje automatyczny e-mail z podsumowaniem i linkiem do platnosci.</p>
+                        <h3>Panel wiadomosci</h3>
+                        <p>Szablony automatyczne i historia wysylek.</p>
                       </div>
-                      <span className="status-badge status-badge--success">Aktywne</span>
+                      <Link className="cta-button" href={`/admin/wiadomosci?${adminMonthQuery}`}>
+                        Otworz
+                      </Link>
                     </div>
-                    <p className="inline-meta">
-                      Wiadomosc potwierdza zapis rezerwacji, podaje kwote do zaplaty i prowadzi klienta do kolejnego kroku.
-                    </p>
-                  </article>
-
-                  <article className="admin-row-card">
-                    <div className="admin-row-top">
-                      <div>
-                        <h3>Po potwierdzeniu platnosci</h3>
-                        <p>System wysyla automatyczny e-mail po zapisaniu platnosci.</p>
+                    {dashboard.recentEmailLogs.length === 0 ? (
+                      <p className="inline-meta">Nie ma jeszcze historii wysylek.</p>
+                    ) : (
+                      <div className="admin-stack">
+                        {dashboard.recentEmailLogs.slice(0, 3).map((emailLog) => (
+                          <article className="pricing-rule-card" key={emailLog.id}>
+                            <div className="admin-row-top">
+                              <div>
+                                <h3>{emailTypeLabels[emailLog.type] ?? emailLog.type}</h3>
+                                <p>{emailLog.recipientEmail}</p>
+                              </div>
+                              <span className={getEmailBadgeClass(emailLog.status)}>
+                                {emailStatusLabels[emailLog.status] ?? emailLog.status}
+                              </span>
+                            </div>
+                            <p className="inline-meta">
+                              Rezerwacja: {emailLog.reservationNumber ?? "brak numeru"}
+                            </p>
+                            {emailLog.errorMessage ? (
+                              <p className="inline-meta">Ostatni blad: {emailLog.errorMessage}</p>
+                            ) : (
+                              <p className="inline-meta">
+                                Wyslano: {emailLog.sentAt ?? "oczekuje na potwierdzenie"}
+                              </p>
+                            )}
+                          </article>
+                        ))}
                       </div>
-                      <span className="status-badge status-badge--success">Aktywne</span>
-                    </div>
-                    <p className="inline-meta">
-                      Wiadomosc rozroznia teraz zaliczke i pelna platnosc za pobyt.
-                    </p>
-                  </article>
-
-                  <article className="admin-row-card">
-                    <div className="admin-row-top">
-                      <div>
-                        <h3>Po anulowaniu rezerwacji</h3>
-                        <p>Operator wpisuje powod, a klient dostaje automatyczne potwierdzenie.</p>
-                      </div>
-                      <span className="status-badge status-badge--success">Aktywne</span>
-                    </div>
-                    <p className="inline-meta">
-                      Powod anulowania trafia do maila dla klienta i do notatki administracyjnej w rezerwacji.
-                    </p>
+                    )}
                   </article>
                 </div>
-              </article>
-
-              <article className="admin-card admin-panel-card">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">Wiadomosci</p>
-                    <h2>Historia wysylek</h2>
-                  </div>
-                </div>
-
-                {dashboard.recentEmailLogs.length === 0 ? (
-                  <p>Nie ma jeszcze zapisanej historii maili.</p>
-                ) : (
-                  <div className="admin-stack">
-                      {dashboard.recentEmailLogs.map((emailLog) => (
-                      <article className="admin-row-card" key={emailLog.id}>
-                        <div className="admin-row-top">
-                          <div>
-                            <h3>{emailTypeLabels[emailLog.type] ?? emailLog.type}</h3>
-                            <p>{emailLog.recipientEmail}</p>
-                          </div>
-                          <span className={getEmailBadgeClass(emailLog.status)}>
-                            {emailStatusLabels[emailLog.status] ?? emailLog.status}
-                          </span>
-                        </div>
-                        <p className="inline-meta">
-                          Rezerwacja: {emailLog.reservationNumber ?? "brak numeru"}
-                        </p>
-                        <p className="inline-meta">
-                          Klient: {emailLog.guestName ?? "brak danych klienta"}
-                        </p>
-                        <p className="inline-meta">Temat: {emailLog.subject}</p>
-                        <p className="inline-meta">Dodano do kolejki: {emailLog.createdAt}</p>
-                        <p className="inline-meta">
-                          Wyslano: {emailLog.sentAt ?? "nie potwierdzono jeszcze wysylki"}
-                        </p>
-                        {emailLog.errorMessage ? (
-                          <p className="inline-meta">
-                            Ostatni blad: {emailLog.errorMessage}
-                          </p>
-                        ) : null}
-                        {emailLog.status === EmailLogStatus.FAILED ? (
-                          <form action={retryEmailLogAction} className="admin-inline-form">
-                            <input name="emailLogId" type="hidden" value={emailLog.id} />
-                            <button className="cta-button" type="submit">
-                              Ponow wysylke
-                            </button>
-                          </form>
-                        ) : null}
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </article>
-
-              <article className="admin-card admin-panel-card" id="sekcja-platnosci">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">Platnosci</p>
-                    <h2>Sprawy do dopilnowania</h2>
-                  </div>
-                </div>
-
-                {dashboard.attentionPayments.length === 0 ? (
-                  <p>Nie ma platnosci wymagajacych uwagi. To dobry znak.</p>
-                ) : (
-                  <div className="admin-stack">
-                    {dashboard.attentionPayments.map((payment) => (
-                      <article className="admin-row-card" key={payment.id}>
-                        <div className="admin-row-top">
-                          <div>
-                            <h3>{payment.reservationNumber}</h3>
-                            <p>{payment.guestName}</p>
-                          </div>
-                          <span className={getBadgeClass(payment.status)}>
-                            {statusLabels[payment.status] ?? payment.status}
-                          </span>
-                        </div>
-                        <p className="inline-meta">
-                          Kwota: {formatDashboardMoney(payment.amount, payment.currency)}
-                        </p>
-                        <p className="inline-meta">
-                          Waznosc linku: {payment.expiresAt ?? "brak daty"}
-                        </p>
-                        {payment.paymentUrl ? (
-                          <p className="inline-link">
-                            <Link href={payment.paymentUrl} target="_blank">
-                              Otworz link platnosci
-                            </Link>
-                          </p>
-                        ) : (
-                          <p className="inline-meta">Link platnosci nie zostal jeszcze zapisany.</p>
-                        )}
-                      </article>
-                    ))}
-                  </div>
-                )}
               </article>
 
               <article className="admin-card admin-panel-card" id="sekcja-apartamenty">
                 <div className="section-heading">
                   <div>
-                    <p className="eyebrow">Apartamenty i kalendarz</p>
-                    <h2>Edycja i ceny specjalne</h2>
+                    <p className="eyebrow">Apartamenty</p>
+                    <h2>Zarzadzanie obiektami</h2>
                   </div>
                 </div>
 
-                {dashboard.apartments.length === 0 ? (
-                  <p>Nie ma jeszcze zadnego apartamentu w bazie.</p>
-                ) : (
-                  <div className="admin-stack">
-                    <div className="admin-subsection">
-                      <div className="section-heading section-heading--compact">
-                        <div>
-                          <p className="eyebrow">Apartamenty aktywne</p>
-                          <h3>Obiekty gotowe do sprzedazy i obslugi</h3>
-                        </div>
-                      </div>
-                      {activeApartmentsForManagement.length === 0 ? (
-                        <p>Nie ma teraz zadnego aktywnego apartamentu.</p>
-                      ) : (
-                        <div className="admin-stack">
-                          {activeApartmentsForManagement.map((apartment) =>
-                            renderApartmentManagementCard(apartment),
-                          )}
-                        </div>
-                      )}
+                <article className="admin-row-card">
+                  <div className="admin-row-top">
+                    <div>
+                      <h3>Panel apartamentow</h3>
+                      <p>Dodawanie, edycja, ceny specjalne i blokady terminow.</p>
                     </div>
-
-                    <div className="admin-subsection">
-                      <div className="section-heading section-heading--compact">
-                        <div>
-                          <p className="eyebrow">Apartamenty nieaktywne</p>
-                          <h3>Obiekty ukryte ze sprzedazy, ale zachowane w systemie</h3>
-                        </div>
-                      </div>
-                      {inactiveApartmentsForManagement.length === 0 ? (
-                        <p>Nie ma teraz zadnego nieaktywnego apartamentu.</p>
-                      ) : (
-                        <div className="admin-stack">
-                          {inactiveApartmentsForManagement.map((apartment) =>
-                            renderApartmentManagementCard(apartment),
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <Link className="cta-button" href={`/admin/apartamenty?${adminMonthQuery}`}>
+                      Otworz
+                    </Link>
                   </div>
-                )}
+                  <p className="inline-meta">
+                    Aktywne: {activeApartmentsForManagement.length}
+                  </p>
+                  <p className="inline-meta">
+                    Nieaktywne: {inactiveApartmentsForManagement.length}
+                  </p>
+                </article>
               </article>
 
               <article className="admin-card admin-panel-card">
@@ -1847,7 +1609,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 </div>
                 <ul className="admin-checklist">
                   <li>Rezerwacja reczna z poziomu panelu.</li>
-                  <li>Podglad kalendarza miesiecznego dla apartamentu.</li>
+                  <li>Lepszy podglad historii klienta i pobytow.</li>
                   <li>Gotowe szablony wiadomosci do edycji przez operatora.</li>
                   <li>Docelowo logowanie administratora.</li>
                 </ul>
