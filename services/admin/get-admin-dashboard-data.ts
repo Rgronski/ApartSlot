@@ -216,6 +216,7 @@ export async function getAdminDashboardData(
     monthEnd: Date;
     recentReservationsTake?: number;
     recentEmailLogsTake?: number;
+    attentionPaymentsTake?: number;
   },
   db: PrismaClient = prisma,
 ): Promise<AdminDashboardData> {
@@ -232,6 +233,7 @@ export async function getAdminDashboardData(
     const monthEnd = options.monthEnd;
     const recentReservationsTake = options.recentReservationsTake ?? 6;
     const recentEmailLogsTake = options.recentEmailLogsTake ?? 10;
+    const attentionPaymentsTake = options.attentionPaymentsTake ?? 6;
 
     const [apartmentCount, activeApartmentCount, apartments] = await Promise.all([
       db.apartment.count(),
@@ -524,7 +526,7 @@ export async function getAdminDashboardData(
           },
         }),
         db.payment.findMany({
-          take: 6,
+          take: attentionPaymentsTake,
           orderBy: [
             {
               paymentExpiresAt: "asc",

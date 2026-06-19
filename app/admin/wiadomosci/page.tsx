@@ -126,7 +126,7 @@ export default async function AdminMessagesPage({
         >
           Wiadomosci
         </Link>
-        <Link className="admin-section-link" href={`/admin?${adminMonthQuery}#sekcja-platnosci`}>
+        <Link className="admin-section-link" href={`/admin/platnosci?${adminMonthQuery}`}>
           Platnosci
         </Link>
         <Link className="admin-section-link" href={`/admin?${adminMonthQuery}#sekcja-apartamenty`}>
