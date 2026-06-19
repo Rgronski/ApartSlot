@@ -1004,9 +1004,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <Link className="admin-section-link" href={`/admin/rezerwacje?${adminMonthQuery}`}>
           Rezerwacje
         </Link>
-        <a className="admin-section-link" href="#sekcja-integracje">
+        <Link className="admin-section-link" href={`/admin/integracje?${adminMonthQuery}`}>
           Integracje
-        </a>
+        </Link>
         <Link className="admin-section-link" href={`/admin/wiadomosci?${adminMonthQuery}`}>
           Wiadomosci
         </Link>
@@ -1483,7 +1483,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <h3>Google Calendar</h3>
                         <p>Stan synchronizacji kalendarzy i konta serwisowego.</p>
                       </div>
-                      <Link className="cta-button" href={`/admin/ustawienia?${adminMonthQuery}`}>
+                      <Link className="cta-button" href={`/admin/integracje?${adminMonthQuery}`}>
                         Szczegoly
                       </Link>
                     </div>

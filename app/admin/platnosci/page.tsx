@@ -74,7 +74,7 @@ export default async function AdminPaymentsPage({
         <Link className="admin-section-link" href={`/admin/rezerwacje?${adminMonthQuery}`}>
           Rezerwacje
         </Link>
-        <Link className="admin-section-link" href={`/admin?${adminMonthQuery}#sekcja-integracje`}>
+        <Link className="admin-section-link" href={`/admin/integracje?${adminMonthQuery}`}>
           Integracje
         </Link>
         <Link className="admin-section-link" href={`/admin/wiadomosci?${adminMonthQuery}`}>
