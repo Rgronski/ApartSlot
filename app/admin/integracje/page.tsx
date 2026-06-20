@@ -1,13 +1,24 @@
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { ReservationStatus } from "@prisma/client";
 import Link from "next/link";
 
 import { APP_VERSION } from "@/lib/app-version";
 import { buildMonthView } from "@/lib/calendar/month-view";
+import { prisma } from "@/lib/db/prisma";
+import { DomainError } from "@/lib/errors/domain-error";
 import { getAdminDashboardData } from "@/services/admin/get-admin-dashboard-data";
-import { getGoogleCalendarIntegrationStatus } from "@/services/calendar/get-google-calendar-integration-status";
+import {
+  getGoogleCalendarIntegrationStatus,
+  runGoogleCalendarWriteTest,
+  syncConfirmedReservationsBatch,
+} from "@/services/calendar";
 
 type AdminIntegrationsPageProps = {
   searchParams?: Promise<{
     month?: string;
+    status?: string;
+    message?: string;
   }>;
 };
 
@@ -17,6 +28,8 @@ export default async function AdminIntegrationsPage({
   const params = searchParams ? await searchParams : undefined;
   const monthCalendar = buildMonthView(params?.month);
   const adminMonthQuery = `month=${encodeURIComponent(monthCalendar.monthParam)}`;
+  const status = params?.status;
+  const message = params?.message;
   const dashboard = await getAdminDashboardData({
     monthStart: monthCalendar.monthStart,
     monthEnd: monthCalendar.monthEnd,
@@ -42,6 +55,66 @@ export default async function AdminIntegrationsPage({
     googleCalendarStatus?.apartments.filter((item) => item.status === "ok").length ?? 0;
   const missingApartmentsCount =
     googleCalendarStatus?.apartments.filter((item) => item.status !== "ok").length ?? 0;
+  const confirmedReservationsWithoutCalendarEvent =
+    dashboard.state === "ready"
+      ? await prisma.reservation.count({
+          where: {
+            status: ReservationStatus.CONFIRMED,
+            calendarEventId: null,
+          },
+        })
+      : 0;
+
+  async function runCalendarWriteTestAction(formData: FormData) {
+    "use server";
+
+    try {
+      const calendarId = String(formData.get("calendarId") ?? "").trim();
+      const apartmentName = String(formData.get("apartmentName") ?? "").trim();
+
+      await runGoogleCalendarWriteTest({
+        calendarId,
+        apartmentName,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie wykonac testu zapisu do Google Calendar.";
+
+      redirect(
+        `/admin/integracje?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`,
+      );
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/integracje");
+    redirect(`/admin/integracje?${adminMonthQuery}&status=calendar_test_success`);
+  }
+
+  async function syncConfirmedReservationsAction() {
+    "use server";
+
+    try {
+      const result = await syncConfirmedReservationsBatch();
+      const messageText = `Sprawdzono ${result.checked} potwierdzonych rezerwacji. Zsynchronizowano: ${result.synced}, pominieto: ${result.skipped}, bledy: ${result.failed}.`;
+
+      revalidatePath("/admin");
+      revalidatePath("/admin/integracje");
+      redirect(
+        `/admin/integracje?${adminMonthQuery}&status=calendar_sync_success&message=${encodeURIComponent(messageText)}`,
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie uruchomic synchronizacji potwierdzonych rezerwacji.";
+
+      redirect(
+        `/admin/integracje?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`,
+      );
+    }
+  }
 
   return (
     <main className="admin-shell">
@@ -112,7 +185,32 @@ export default async function AdminIntegrationsPage({
             Tyle apartamentow nadal ma brak ID, brak dostepu albo inny problem.
           </p>
         </article>
+        <article className="admin-card metric-card">
+          <p className="metric-label">Potwierdzone bez wpisu</p>
+          <p className="metric-value">{confirmedReservationsWithoutCalendarEvent}</p>
+          <p className="metric-hint">
+            Tyle potwierdzonych rezerwacji nie ma jeszcze zapisanego identyfikatora wydarzenia Google.
+          </p>
+        </article>
       </section>
+
+      {status === "calendar_test_success" ? (
+        <div className="inline-notice inline-notice--success">
+          <p>Test zapisu do Google Calendar zakonczyl sie powodzeniem.</p>
+        </div>
+      ) : null}
+
+      {status === "calendar_sync_success" ? (
+        <div className="inline-notice inline-notice--success">
+          <p>{message ?? "Synchronizacja potwierdzonych rezerwacji zostala uruchomiona poprawnie."}</p>
+        </div>
+      ) : null}
+
+      {status === "error" && message ? (
+        <div className="inline-notice inline-notice--danger">
+          <p>{message}</p>
+        </div>
+      ) : null}
 
       <section className="admin-layout">
         <article className="admin-card admin-panel-card admin-page-section">
@@ -128,6 +226,17 @@ export default async function AdminIntegrationsPage({
           ) : (
             <div className="admin-stack">
               <article className="admin-row-card">
+                <div className="admin-row-top">
+                  <div>
+                    <h3>Konto serwisowe Google</h3>
+                    <p>To konto techniczne wykonuje zapis i usuwanie wydarzen w kalendarzu.</p>
+                  </div>
+                  <form action={syncConfirmedReservationsAction}>
+                    <button className="cta-button" type="submit">
+                      Synchronizuj potwierdzone rezerwacje
+                    </button>
+                  </form>
+                </div>
                 <p className="inline-meta">
                   Konto serwisowe:{" "}
                   {googleCalendarStatus.serviceAccountReady
@@ -182,6 +291,19 @@ export default async function AdminIntegrationsPage({
                         Google widzi ten kalendarz jako: {calendarStatus.resolvedCalendarName}
                       </p>
                     ) : null}
+                    {calendarStatus.calendarId ? (
+                      <form action={runCalendarWriteTestAction} className="admin-inline-form">
+                        <input name="calendarId" type="hidden" value={calendarStatus.calendarId} />
+                        <input
+                          name="apartmentName"
+                          type="hidden"
+                          value={calendarStatus.apartmentName}
+                        />
+                        <button className="cta-button" type="submit">
+                          Testuj zapis do Google
+                        </button>
+                      </form>
+                    ) : null}
                   </article>
                 ))
               )}
@@ -202,7 +324,8 @@ export default async function AdminIntegrationsPage({
               <li>Sprawdzic, czy konto serwisowe Google jest wpisane w Vercel.</li>
               <li>Potwierdzic, ze kazdy apartament ma poprawny Google Calendar ID.</li>
               <li>Jesli Google pokazuje brak dostepu, nadac uprawnienia kalendarzowi dla konta serwisowego.</li>
-              <li>Wykonac jedna testowa rezerwacje i sprawdzic, czy trafia do Google Calendar.</li>
+              <li>Uruchomic test zapisu z tego ekranu i sprawdzic, czy nie ma bledu dostepu.</li>
+              <li>Wykonac jedna testowa platna rezerwacje i sprawdzic, czy trafia do Google Calendar.</li>
             </ul>
           </article>
 
