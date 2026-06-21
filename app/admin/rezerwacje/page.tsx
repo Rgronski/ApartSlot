@@ -7,6 +7,8 @@ import { buildMonthView } from "@/lib/calendar/month-view";
 import { DomainError } from "@/lib/errors/domain-error";
 import { getAdminDashboardData, formatDashboardMoney } from "@/services/admin/get-admin-dashboard-data";
 import { cancelReservation } from "@/services/admin/cancel-reservation";
+import { confirmReservation } from "@/services/admin/confirm-reservation";
+import { syncConfirmedReservationToGoogleCalendar } from "@/services/calendar";
 import { sendReservationCancelledEmail } from "@/services/email/send-reservation-cancelled-email";
 
 const statusLabels: Record<string, string> = {
@@ -39,6 +41,10 @@ function getBadgeClass(status: string) {
 
 function canReservationBeCancelled(status: string) {
   return status === "DRAFT" || status === "PENDING_PAYMENT" || status === "CONFIRMED";
+}
+
+function canReservationBeConfirmed(status: string) {
+  return status === "DRAFT" || status === "PENDING_PAYMENT";
 }
 
 function readString(formData: FormData, key: string) {
@@ -108,6 +114,46 @@ export default async function AdminReservationsPage({
     );
   }
 
+  async function confirmReservationAction(formData: FormData) {
+    "use server";
+
+    let nextStatus = "reservation_confirmed";
+    let nextMessage = "";
+
+    try {
+      const result = await confirmReservation(
+        readString(formData, "reservationId"),
+        readString(formData, "operatorNote") || null,
+      );
+
+      const calendarResult = await syncConfirmedReservationToGoogleCalendar(
+        result.reservationId,
+      );
+
+      if (calendarResult.status !== "synced") {
+        nextStatus = "warning";
+        nextMessage =
+          calendarResult.status === "skipped"
+            ? `Rezerwacja zostala potwierdzona, ale wpis do Google Calendar zostal pominiety: ${calendarResult.reason}`
+            : `Rezerwacja zostala potwierdzona, ale synchronizacja Google Calendar zakonczyla sie bledem: ${calendarResult.reason}`;
+      }
+    } catch (error) {
+      nextStatus = "error";
+      nextMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie potwierdzic rezerwacji. Sprobuj ponownie.";
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/rezerwacje");
+    revalidatePath("/admin/integracje");
+    revalidatePath("/");
+    redirect(
+      `/admin/rezerwacje?${adminMonthQuery}&status=${nextStatus}${nextMessage ? `&message=${encodeURIComponent(nextMessage)}` : ""}`,
+    );
+  }
+
   return (
     <main className="admin-shell">
       <section className="admin-hero">
@@ -158,6 +204,12 @@ export default async function AdminReservationsPage({
       {status === "reservation_cancelled" ? (
         <div className="inline-notice inline-notice--success">
           <p>Rezerwacja zostala anulowana poprawnie.</p>
+        </div>
+      ) : null}
+
+      {status === "reservation_confirmed" ? (
+        <div className="inline-notice inline-notice--success">
+          <p>Rezerwacja zostala potwierdzona poprawnie.</p>
         </div>
       ) : null}
 
@@ -251,6 +303,38 @@ export default async function AdminReservationsPage({
                         <dd>{reservation.createdAt}</dd>
                       </div>
                     </dl>
+
+                    {canReservationBeConfirmed(reservation.status) ? (
+                      <details className="admin-details">
+                        <summary>Potwierdz rezerwacje</summary>
+
+                        <form action={confirmReservationAction} className="admin-form admin-form--nested">
+                          <input name="reservationId" type="hidden" value={reservation.id} />
+
+                          <div className="inline-notice inline-notice--success">
+                            <p>
+                              Ta akcja potwierdzi pobyt recznie z panelu administratora i sprobuje
+                              zapisac go do Google Calendar, ale nie oznaczy platnosci jako oplaconej.
+                            </p>
+                          </div>
+
+                          <label className="admin-field">
+                            <span>Notatka operatora</span>
+                            <textarea
+                              name="operatorNote"
+                              rows={2}
+                              placeholder="Opcjonalnie: np. potwierdzone telefonicznie lub test bez platnosci."
+                            />
+                          </label>
+
+                          <div className="admin-form-actions">
+                            <button className="cta-button" type="submit">
+                              Potwierdz rezerwacje
+                            </button>
+                          </div>
+                        </form>
+                      </details>
+                    ) : null}
 
                     {canReservationBeCancelled(reservation.status) ? (
                       <details className="admin-details admin-details--danger">
