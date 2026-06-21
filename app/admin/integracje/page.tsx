@@ -95,15 +95,15 @@ export default async function AdminIntegrationsPage({
   async function syncConfirmedReservationsAction() {
     "use server";
 
+    let messageText =
+      "Synchronizacja potwierdzonych rezerwacji zostala uruchomiona poprawnie.";
+
     try {
       const result = await syncConfirmedReservationsBatch();
-      const messageText = `Sprawdzono ${result.checked} potwierdzonych rezerwacji. Zsynchronizowano: ${result.synced}, pominieto: ${result.skipped}, bledy: ${result.failed}.`;
+      messageText = `Sprawdzono ${result.checked} potwierdzonych rezerwacji. Zsynchronizowano: ${result.synced}, pominieto: ${result.skipped}, bledy: ${result.failed}.`;
 
       revalidatePath("/admin");
       revalidatePath("/admin/integracje");
-      redirect(
-        `/admin/integracje?${adminMonthQuery}&status=calendar_sync_success&message=${encodeURIComponent(messageText)}`,
-      );
     } catch (error) {
       const errorMessage =
         error instanceof DomainError
@@ -114,6 +114,10 @@ export default async function AdminIntegrationsPage({
         `/admin/integracje?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`,
       );
     }
+
+    redirect(
+      `/admin/integracje?${adminMonthQuery}&status=calendar_sync_success&message=${encodeURIComponent(messageText)}`,
+    );
   }
 
   return (
