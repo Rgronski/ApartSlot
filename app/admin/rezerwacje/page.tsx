@@ -10,6 +10,7 @@ import { cancelReservation } from "@/services/admin/cancel-reservation";
 import { confirmReservation } from "@/services/admin/confirm-reservation";
 import { syncConfirmedReservationToGoogleCalendar } from "@/services/calendar";
 import { sendReservationCancelledEmail } from "@/services/email/send-reservation-cancelled-email";
+import { sendReservationManuallyConfirmedEmail } from "@/services/email/send-reservation-manually-confirmed-email";
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Szkic",
@@ -136,6 +137,18 @@ export default async function AdminReservationsPage({
           calendarResult.status === "skipped"
             ? `Rezerwacja zostala potwierdzona, ale wpis do Google Calendar zostal pominiety: ${calendarResult.reason}`
             : `Rezerwacja zostala potwierdzona, ale synchronizacja Google Calendar zakonczyla sie bledem: ${calendarResult.reason}`;
+      } else {
+        const emailResult = await sendReservationManuallyConfirmedEmail(
+          result.reservationId,
+        );
+
+        if (emailResult.status !== "sent") {
+          nextStatus = "warning";
+          nextMessage =
+            emailResult.status === "skipped"
+              ? `Rezerwacja zostala potwierdzona, ale mail nie zostal wyslany: ${emailResult.reason}`
+              : `Rezerwacja zostala potwierdzona, ale mail zakonczyl sie bledem: ${emailResult.reason}`;
+        }
       }
     } catch (error) {
       nextStatus = "error";

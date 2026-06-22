@@ -51,6 +51,7 @@ const pricingRuleTypeLabels: Record<PricingRuleType, string> = {
 const emailTypeLabels: Record<string, string> = {
   RESERVATION_CREATED: "Nowa rezerwacja",
   RESERVATION_CONFIRMED: "Potwierdzenie platnosci",
+  RESERVATION_MANUALLY_CONFIRMED: "Potwierdzenie reczne przez obsluge",
   RESERVATION_CANCELLED: "Anulowanie rezerwacji",
 };
 

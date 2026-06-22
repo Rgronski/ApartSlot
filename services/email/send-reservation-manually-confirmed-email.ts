@@ -1,0 +1,105 @@
+import type { PrismaClient } from "@prisma/client";
+
+import { prisma } from "@/lib/db/prisma";
+import { buildReservationManuallyConfirmedEmailTemplate } from "@/emails/templates/reservation-manually-confirmed-email";
+
+import { sendLoggedEmail } from "./send-logged-email";
+
+type SendReservationManuallyConfirmedEmailResult =
+  | {
+      status: "sent";
+      reservationId: string;
+      emailLogId: string;
+      providerMessageId: string | null;
+    }
+  | {
+      status: "skipped";
+      reservationId: string;
+      reason: string;
+    }
+  | {
+      status: "failed";
+      reservationId: string;
+      reason: string;
+    };
+
+function formatDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+export async function sendReservationManuallyConfirmedEmail(
+  reservationId: string,
+  db: PrismaClient = prisma,
+): Promise<SendReservationManuallyConfirmedEmailResult> {
+  const reservation = await db.reservation.findUnique({
+    where: {
+      id: reservationId,
+    },
+    include: {
+      guest: true,
+      apartment: true,
+    },
+  });
+
+  if (!reservation) {
+    return {
+      status: "failed",
+      reservationId,
+      reason: "Nie znaleziono rezerwacji do wysylki maila o recznym potwierdzeniu.",
+    };
+  }
+
+  if (!reservation.guest.email?.trim()) {
+    return {
+      status: "skipped",
+      reservationId,
+      reason: "Brakuje adresu e-mail klienta.",
+    };
+  }
+
+  const template = buildReservationManuallyConfirmedEmailTemplate({
+    guestFirstName: reservation.guest.firstName,
+    apartmentName: reservation.apartment.name,
+    checkInDate: formatDate(reservation.checkInDate),
+    checkOutDate: formatDate(reservation.checkOutDate),
+    nightsCount: reservation.nightsCount,
+    guestsCount: reservation.guestsCount,
+    totalAmount: Number(reservation.totalAmount),
+    paidAmount: Number(reservation.paidAmount),
+    currency: reservation.currency,
+    reservationNumber: reservation.reservationNumber,
+  });
+
+  const result = await sendLoggedEmail(
+    {
+      reservationId: reservation.id,
+      guestId: reservation.guest.id,
+      type: "RESERVATION_MANUALLY_CONFIRMED",
+      recipientEmail: reservation.guest.email,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+    },
+    db,
+  );
+
+  if (result.status === "failed") {
+    console.error("Reservation manually confirmed email failed", {
+      reservationId,
+      reason: result.reason,
+    });
+
+    return {
+      status: "failed",
+      reservationId,
+      reason: result.reason,
+    };
+  }
+
+  return {
+    status: "sent",
+    reservationId,
+    emailLogId: result.emailLogId,
+    providerMessageId: result.providerMessageId,
+  };
+}

@@ -12,6 +12,7 @@ import { retryEmailLog } from "@/services/email/retry-email-log";
 const emailTypeLabels: Record<string, string> = {
   RESERVATION_CREATED: "Nowa rezerwacja",
   RESERVATION_CONFIRMED: "Potwierdzenie platnosci",
+  RESERVATION_MANUALLY_CONFIRMED: "Potwierdzenie reczne przez obsluge",
   RESERVATION_CANCELLED: "Anulowanie rezerwacji",
 };
 
@@ -212,6 +213,19 @@ export default async function AdminMessagesPage({
                 </div>
                 <p className="inline-meta">
                   Wiadomosc rozroznia teraz zaliczke i pelna platnosc za pobyt.
+                </p>
+              </article>
+
+              <article className="admin-row-card">
+                <div className="admin-row-top">
+                  <div>
+                    <h3>Po recznym potwierdzeniu rezerwacji</h3>
+                    <p>Obsluga moze potwierdzic pobyt z panelu i wyslac klientowi osobny e-mail.</p>
+                  </div>
+                  <span className="status-badge status-badge--success">Aktywne</span>
+                </div>
+                <p className="inline-meta">
+                  Ta wiadomosc nie myli potwierdzenia pobytu z potwierdzeniem platnosci.
                 </p>
               </article>
 

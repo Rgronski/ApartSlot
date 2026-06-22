@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { sendReservationCancelledEmail } from "./send-reservation-cancelled-email";
 import { sendReservationConfirmedEmail } from "./send-reservation-confirmed-email";
 import { sendReservationCreatedEmail } from "./send-reservation-created-email";
+import { sendReservationManuallyConfirmedEmail } from "./send-reservation-manually-confirmed-email";
 
 type RetryEmailLogResult =
   | {
@@ -118,6 +119,25 @@ export async function retryEmailLog(
     const result = await sendReservationCancelledEmail(
       emailLog.reservationId,
       cancellationReason,
+      db,
+    );
+
+    if (result.status === "sent") {
+      return {
+        status: "sent",
+        reservationId: result.reservationId,
+      };
+    }
+
+    return {
+      status: result.status,
+      reason: result.reason,
+    };
+  }
+
+  if (emailLog.type === "RESERVATION_MANUALLY_CONFIRMED") {
+    const result = await sendReservationManuallyConfirmedEmail(
+      emailLog.reservationId,
       db,
     );
 
