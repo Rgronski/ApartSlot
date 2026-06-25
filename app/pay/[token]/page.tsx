@@ -8,7 +8,7 @@ type PaymentPageProps = {
   };
   searchParams?: {
     checkout?: string;
-    session_id?: string;
+    mollie_payment_id?: string;
   };
 };
 
@@ -53,7 +53,7 @@ function getDescriptionForState(
 ) {
   switch (state) {
     case "active":
-      return "Link jest aktywny i moze przekierowac klienta do bezpiecznego Stripe Checkout.";
+      return "Link jest aktywny i moze przekierowac klienta do bezpiecznej platnosci online.";
     case "expired":
       return "Blokada terminu lub link do platnosci juz wygasl. Skontaktuj sie z obsluga, aby przygotowac nowy link.";
     case "paid":
@@ -70,9 +70,9 @@ function getDescriptionForState(
 function getCheckoutNotice(checkout: string | undefined) {
   switch (checkout) {
     case "success":
-      return "Stripe przekierowal klienta z powrotem na strone. Czekamy jeszcze na oficjalne potwierdzenie platnosci przez webhook.";
+      return "Operator platnosci przekierowal klienta z powrotem na strone. Czekamy jeszcze na oficjalne potwierdzenie platnosci.";
     case "cancelled":
-      return "Klient anulowal lub przerwal checkout Stripe i wrocil na strone platnosci.";
+      return "Klient anulowal lub przerwal platnosc i wrocil na strone platnosci.";
     case "expired":
       return "Checkout nie zostal uruchomiony, bo link platnosci juz wygasl.";
     case "paid":
@@ -80,9 +80,9 @@ function getCheckoutNotice(checkout: string | undefined) {
     case "not_found":
       return "Checkout nie zostal uruchomiony, bo nie znaleziono platnosci dla tego tokenu.";
     case "error":
-      return "Nie udalo sie uruchomic checkout Stripe. Sprobuj ponownie albo skontaktuj sie z obsluga.";
-    case "stripe_not_configured":
-      return "Platnosci Stripe nie sa jeszcze w pelni skonfigurowane w aplikacji. Skontaktuj sie z obsluga.";
+      return "Nie udalo sie uruchomic platnosci online. Sprobuj ponownie albo skontaktuj sie z obsluga.";
+    case "mollie_not_configured":
+      return "Platnosci Mollie nie sa jeszcze w pelni skonfigurowane w aplikacji. Skontaktuj sie z obsluga.";
     case "app_url_missing":
       return "Aplikacja nie ma jeszcze kompletnego adresu potrzebnego do uruchomienia platnosci.";
     default:
@@ -234,14 +234,14 @@ export default async function PaymentPage({
           {stateMeta.state === "active" && (
             <>
               <p>
-                Klikniecie przycisku ponizej przekieruje klienta do Stripe
-                Checkout. Rezerwacja nadal czeka na oficjalne potwierdzenie z
-                webhooka.
+                Klikniecie przycisku ponizej przekieruje klienta do bezpiecznej
+                platnosci online. Rezerwacja nadal czeka na oficjalne
+                potwierdzenie od operatora platnosci.
               </p>
               <div className="cta-card">
                 <form method="post" action={`/pay/${params.token}/checkout`}>
                   <button className="cta-button" type="submit">
-                    Zaplac teraz w Stripe
+                    Zaplac online
                   </button>
                 </form>
               </div>
@@ -266,7 +266,7 @@ export default async function PaymentPage({
           )}
           {stateMeta.state === "failed" && (
             <p>
-              Klient moze ponownie uruchomic checkout Stripe, jesli link nadal
+              Klient moze ponownie uruchomic platnosc online, jesli link nadal
               pozostaje wazny.
             </p>
           )}
@@ -276,9 +276,9 @@ export default async function PaymentPage({
               zostal uszkodzony.
             </p>
           )}
-          {searchParams?.session_id ? (
+          {searchParams?.mollie_payment_id ? (
             <p className="session-meta">
-              ID sesji Stripe: <span>{searchParams.session_id}</span>
+              ID platnosci Mollie: <span>{searchParams.mollie_payment_id}</span>
             </p>
           ) : null}
           <p className="support-link">

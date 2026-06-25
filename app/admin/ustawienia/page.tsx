@@ -29,6 +29,7 @@ export default async function AdminSettingsPage({
   const resendApiKeyReady = Boolean(process.env.RESEND_API_KEY?.trim());
   const resendFromEmailReady = Boolean(process.env.RESEND_FROM_EMAIL?.trim());
   const resendReady = resendApiKeyReady && resendFromEmailReady;
+  const mollieApiKeyReady = Boolean(process.env.MOLLIE_API_KEY?.trim());
   const stripeSecretKeyReady = Boolean(process.env.STRIPE_SECRET_KEY?.trim());
   const stripeWebhookSecretReady = Boolean(process.env.STRIPE_WEBHOOK_SECRET?.trim());
   const stripeReady = stripeSecretKeyReady && stripeWebhookSecretReady;
@@ -101,10 +102,10 @@ export default async function AdminSettingsPage({
           </p>
         </article>
         <article className="admin-card metric-card">
-          <p className="metric-label">Platnosci Stripe</p>
-          <p className="metric-value">{stripeReady ? "OK" : "Brak"}</p>
+          <p className="metric-label">Platnosci Mollie</p>
+          <p className="metric-value">{mollieApiKeyReady ? "OK" : "Brak"}</p>
           <p className="metric-hint">
-            Sprawdza klucz Stripe i webhook, czyli potwierdzenia platnosci.
+            Sprawdza klucz Mollie potrzebny do uruchamiania platnosci online.
           </p>
         </article>
       </section>
@@ -163,24 +164,28 @@ export default async function AdminSettingsPage({
               <article className="admin-row-card">
                 <div className="admin-row-top">
                   <div>
-                    <h3>Stripe</h3>
-                    <p>Platnosci online i potwierdzenia przez webhook.</p>
+                    <h3>Mollie</h3>
+                    <p>Platnosci online z BLIK, Przelewy24 i innymi metodami.</p>
                   </div>
                   <span
                     className={
-                      stripeReady
+                      mollieApiKeyReady
                         ? "status-badge status-badge--success"
                         : "status-badge status-badge--danger"
                     }
                   >
-                    {stripeReady ? "Gotowe" : "Braki"}
+                    {mollieApiKeyReady ? "Gotowe" : "Braki"}
                   </span>
                 </div>
                 <p className="inline-meta">
-                  Klucz Stripe: {stripeSecretKeyReady ? "ustawiony" : "brakuje"}
+                  Klucz Mollie: {mollieApiKeyReady ? "ustawiony" : "brakuje"}
                 </p>
                 <p className="inline-meta">
-                  Webhook Stripe: {stripeWebhookSecretReady ? "ustawiony" : "brakuje"}
+                  Webhook Mollie: /api/webhooks/mollie
+                </p>
+                <p className="inline-meta">
+                  Stripe pozostaje w kodzie jako opcja zapasowa:{" "}
+                  {stripeReady ? "skonfigurowany" : "nieskonfigurowany"}
                 </p>
               </article>
 
@@ -216,7 +221,7 @@ export default async function AdminSettingsPage({
             <ul className="admin-checklist">
               <li>Uzupelnic konto serwisowe Google w Vercel, aby kalendarz dzialal automatycznie.</li>
               <li>Ustawic Resend, aby maile o rezerwacji i anulowaniu wychodzily bez bledu.</li>
-              <li>Potwierdzic Stripe na produkcji testowa platnoscia.</li>
+              <li>Potwierdzic Mollie na produkcji testowa platnoscia.</li>
               <li>Sprawdzic, czy APP_BASE_URL wskazuje na glowny adres aplikacji online.</li>
             </ul>
           </article>

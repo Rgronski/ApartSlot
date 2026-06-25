@@ -44,6 +44,7 @@ begin
 
   if not exists (select 1 from pg_type where typname = 'payment_provider') then
     create type payment_provider as enum (
+      'MOLLIE',
       'STRIPE',
       'PRZELEWY24',
       'PAYU',
@@ -164,7 +165,7 @@ create table if not exists reservations (
 create table if not exists payments (
   id uuid primary key default gen_random_uuid(),
   reservation_id uuid not null references reservations(id) on delete cascade,
-  provider payment_provider not null default 'STRIPE',
+  provider payment_provider not null default 'MOLLIE',
   provider_payment_id text,
   payment_token text not null unique,
   payment_url text,

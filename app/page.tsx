@@ -344,7 +344,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         <p>
           Klient wypelnia ten formularz, a po poprawnym zapisie przechodzi od
-          razu do bezpiecznej platnosci Stripe.
+          razu do bezpiecznej platnosci online.
         </p>
 
         {status === "error" && message ? (
@@ -454,7 +454,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 Przejdz do platnosci
               </button>
               <p className="admin-form-note">
-                System sprawdzi dostepnosc i od razu sprobuje uruchomic Stripe Checkout.
+                System sprawdzi dostepnosc i od razu sprobuje uruchomic platnosc online.
               </p>
             </div>
           </form>

@@ -44,7 +44,7 @@ describe("createOnlineReservation", () => {
     expect(result.reservationDraft.paymentStatus).toBe("CREATED");
     expect(result.guestResolution.action).toBe("created");
     expect(result.reservationDraft.guestId).toBe(result.guestResolution.guest.id);
-    expect(result.paymentDraft.provider).toBe("STRIPE");
+    expect(result.paymentDraft.provider).toBe("MOLLIE");
     expect(result.paymentDraft.paymentUrl).toContain("/pay/");
     expect(result.paymentDraft.paymentToken).toHaveLength(64);
     expect(result.summary.amountToPayNow).toBe(510);

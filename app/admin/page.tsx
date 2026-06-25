@@ -144,6 +144,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const resendApiKeyReady = Boolean(process.env.RESEND_API_KEY?.trim());
   const resendFromEmailReady = Boolean(process.env.RESEND_FROM_EMAIL?.trim());
   const resendReady = resendApiKeyReady && resendFromEmailReady;
+  const mollieApiKeyReady = Boolean(process.env.MOLLIE_API_KEY?.trim());
   const stripeSecretKeyReady = Boolean(process.env.STRIPE_SECRET_KEY?.trim());
   const stripeWebhookSecretReady = Boolean(process.env.STRIPE_WEBHOOK_SECRET?.trim());
   const stripeReady = stripeSecretKeyReady && stripeWebhookSecretReady;
@@ -1509,14 +1510,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <div className="admin-row-top">
                       <div>
                         <h3>Ustawienia systemu</h3>
-                        <p>Resend, Stripe i adres aplikacji w jednym miejscu.</p>
+                        <p>Resend, Mollie i adres aplikacji w jednym miejscu.</p>
                       </div>
                       <Link className="cta-button" href={`/admin/ustawienia?${adminMonthQuery}`}>
                         Otworz
                       </Link>
                     </div>
                     <p className="inline-meta">Resend: {resendReady ? "gotowe" : "braki"}</p>
-                    <p className="inline-meta">Stripe: {stripeReady ? "gotowe" : "braki"}</p>
+                    <p className="inline-meta">Mollie: {mollieApiKeyReady ? "gotowe" : "braki"}</p>
+                    <p className="inline-meta">Stripe zapasowo: {stripeReady ? "gotowe" : "braki"}</p>
                     <p className="inline-meta">APP_BASE_URL: {appBaseUrl ? "ustawiony" : "brak"}</p>
                   </article>
                 </div>

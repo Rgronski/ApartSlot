@@ -29,6 +29,7 @@ Dodanie modeli danych w Prisma oraz logiki sprawdzania dostepnosci terminow.
 - [Endpoint API rezerwacje](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/endpoint-api-rezerwacje.md>)
 - [Strona platnosci pay token](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/strona-platnosci-pay-token.md>)
 - [Integracja Stripe Checkout](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/integracja-stripe-checkout.md>)
+- [Integracja Mollie](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/integracja-mollie.md>)
 - [Webhook Stripe](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/webhook-stripe.md>)
 - [Google Calendar po platnosci](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/google-calendar-po-platnosci.md>)
 - [E-mail potwierdzenie po platnosci](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/email-potwierdzenie-po-platnosci.md>)

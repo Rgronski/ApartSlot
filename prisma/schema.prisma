@@ -49,6 +49,7 @@ enum ReservationSource {
 }
 
 enum PaymentProvider {
+  MOLLIE
   STRIPE
   PRZELEWY24
   PAYU
@@ -181,7 +182,7 @@ model Reservation {
 model Payment {
   id                String          @id @default(uuid()) @db.Uuid
   reservationId     String          @map("reservation_id") @db.Uuid
-  provider          PaymentProvider @default(STRIPE)
+  provider          PaymentProvider @default(MOLLIE)
   providerPaymentId String?         @map("provider_payment_id")
   paymentToken      String          @map("payment_token") @unique
   paymentUrl        String?         @map("payment_url")

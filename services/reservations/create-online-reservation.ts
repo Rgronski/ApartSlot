@@ -112,7 +112,7 @@ export type CreateOnlineReservationResult = {
   paymentDraft: {
     id: string;
     reservationId: string;
-    provider: "STRIPE";
+    provider: "MOLLIE";
     paymentToken: string;
     paymentUrl: string;
     amount: number;
@@ -344,7 +344,7 @@ export function createOnlineReservation(
   const paymentDraft: CreateOnlineReservationResult["paymentDraft"] = {
     id: paymentId,
     reservationId,
-    provider: "STRIPE",
+    provider: "MOLLIE",
     paymentToken,
     paymentUrl,
     amount: priceResult.amountToPayNow,

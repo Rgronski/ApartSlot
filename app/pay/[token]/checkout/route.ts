@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { DomainError } from "@/lib/errors/domain-error";
-import { createStripeCheckoutSession } from "@/services/payments";
+import { createMolliePayment } from "@/services/payments";
 
 function mapErrorToRedirectMessage(error: DomainError) {
   switch (error.code) {
@@ -13,8 +13,8 @@ function mapErrorToRedirectMessage(error: DomainError) {
       return "cancelled";
     case "PAYMENT_EXPIRED":
       return "expired";
-    case "MISSING_STRIPE_SECRET_KEY":
-      return "stripe_not_configured";
+    case "MISSING_MOLLIE_API_KEY":
+      return "mollie_not_configured";
     case "MISSING_APP_BASE_URL":
       return "app_url_missing";
     default:
@@ -29,7 +29,7 @@ export async function POST(
   const { token } = await context.params;
 
   try {
-    const result = await createStripeCheckoutSession(token);
+    const result = await createMolliePayment(token);
 
     return NextResponse.redirect(result.checkoutUrl, {
       status: 303,

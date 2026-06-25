@@ -86,6 +86,7 @@ OTHER
 ## ENUM: PaymentProvider
 
 ```text
+MOLLIE
 STRIPE
 PRZELEWY24
 PAYU

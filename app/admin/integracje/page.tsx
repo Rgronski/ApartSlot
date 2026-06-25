@@ -358,7 +358,7 @@ export default async function AdminIntegrationsPage({
                 <div className="admin-row-top">
                   <div>
                     <h3>Ustawienia</h3>
-                    <p>Tutaj sprawdzisz Resend, Stripe i glowny adres aplikacji.</p>
+                    <p>Tutaj sprawdzisz Resend, Mollie i glowny adres aplikacji.</p>
                   </div>
                   <Link className="cta-button" href={`/admin/ustawienia?${adminMonthQuery}`}>
                     Otworz
