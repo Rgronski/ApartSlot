@@ -8,6 +8,7 @@ import { DomainError } from "@/lib/errors/domain-error";
 import { getAdminDashboardData, formatDashboardMoney } from "@/services/admin/get-admin-dashboard-data";
 import { cancelReservation } from "@/services/admin/cancel-reservation";
 import { confirmReservation } from "@/services/admin/confirm-reservation";
+import { extendPaymentLink } from "@/services/admin/extend-payment-link";
 import { syncConfirmedReservationToGoogleCalendar } from "@/services/calendar";
 import { sendReservationCancelledEmail } from "@/services/email/send-reservation-cancelled-email";
 import { sendReservationManuallyConfirmedEmail } from "@/services/email/send-reservation-manually-confirmed-email";
@@ -167,6 +168,31 @@ export default async function AdminReservationsPage({
     );
   }
 
+  async function extendPaymentLinkAction(formData: FormData) {
+    "use server";
+
+    let nextStatus = "payment_link_extended";
+    let nextMessage = "";
+
+    try {
+      await extendPaymentLink(readString(formData, "reservationId"));
+    } catch (error) {
+      nextStatus = "error";
+      nextMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie przedluzyc linku platnosci. Sprobuj ponownie.";
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/rezerwacje");
+    revalidatePath("/admin/platnosci");
+    revalidatePath("/");
+    redirect(
+      `/admin/rezerwacje?${adminMonthQuery}&status=${nextStatus}${nextMessage ? `&message=${encodeURIComponent(nextMessage)}` : ""}`,
+    );
+  }
+
   return (
     <main className="admin-shell">
       <section className="admin-hero">
@@ -223,6 +249,12 @@ export default async function AdminReservationsPage({
       {status === "reservation_confirmed" ? (
         <div className="inline-notice inline-notice--success">
           <p>Rezerwacja zostala potwierdzona poprawnie.</p>
+        </div>
+      ) : null}
+
+      {status === "payment_link_extended" ? (
+        <div className="inline-notice inline-notice--success">
+          <p>Link platnosci zostal przedluzony o 24 godziny.</p>
         </div>
       ) : null}
 
@@ -326,6 +358,12 @@ export default async function AdminReservationsPage({
                         >
                           Otworz link platnosci
                         </Link>
+                        <form action={extendPaymentLinkAction}>
+                          <input name="reservationId" type="hidden" value={reservation.id} />
+                          <button className="cta-button" type="submit">
+                            Przedluz link o 24h
+                          </button>
+                        </form>
                       </div>
                     ) : (
                       <div className="inline-notice">
