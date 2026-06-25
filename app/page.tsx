@@ -261,6 +261,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     "use server";
 
     const appBaseUrl = resolveAppBaseUrl();
+    let paymentRedirectUrl: string;
 
     if (!appBaseUrl) {
       redirect(
@@ -291,7 +292,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       });
 
       revalidatePath("/");
-      redirect(`${result.paymentDraft.paymentUrl}/checkout`);
+      paymentRedirectUrl = `${result.paymentDraft.paymentUrl}/checkout`;
     } catch (error) {
       const errorMessage =
         error instanceof DomainError
@@ -300,6 +301,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       redirect(`/?${homeMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`);
     }
+
+    redirect(paymentRedirectUrl);
   }
 
   return (
