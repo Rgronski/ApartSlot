@@ -29,6 +29,7 @@ type DashboardReservation = {
   currency: string;
   createdAt: string;
   paymentUrl: string | null;
+  paymentToken: string | null;
 };
 
 type DashboardAttentionPayment = {
@@ -40,6 +41,7 @@ type DashboardAttentionPayment = {
   status: PaymentStatus;
   expiresAt: string | null;
   paymentUrl: string | null;
+  paymentToken: string | null;
 };
 
 type DashboardEmailLog = {
@@ -504,6 +506,7 @@ export async function getAdminDashboardData(
               },
               select: {
                 paymentUrl: true,
+                paymentToken: true,
               },
             },
           },
@@ -557,6 +560,7 @@ export async function getAdminDashboardData(
             status: true,
             paymentExpiresAt: true,
             paymentUrl: true,
+            paymentToken: true,
             reservation: {
               select: {
                 reservationNumber: true,
@@ -589,6 +593,7 @@ export async function getAdminDashboardData(
         currency: reservation.currency,
         createdAt: formatDateTime(reservation.createdAt),
         paymentUrl: reservation.payments[0]?.paymentUrl ?? null,
+        paymentToken: reservation.payments[0]?.paymentToken ?? null,
       }));
       recentEmailLogs = emailLogs.map((emailLog) => ({
         id: emailLog.id,
@@ -613,6 +618,7 @@ export async function getAdminDashboardData(
         status: payment.status,
         expiresAt: payment.paymentExpiresAt ? formatDateTime(payment.paymentExpiresAt) : null,
         paymentUrl: payment.paymentUrl,
+        paymentToken: payment.paymentToken,
       }));
     } catch {
       warningMessage =

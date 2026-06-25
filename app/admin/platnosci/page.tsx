@@ -154,9 +154,9 @@ export default async function AdminPaymentsPage({
                     <p className="inline-meta">
                       Waznosc linku: {payment.expiresAt ?? "brak daty"}
                     </p>
-                    {payment.paymentUrl ? (
+                    {payment.paymentToken ? (
                       <p className="inline-link">
-                        <Link href={payment.paymentUrl} target="_blank">
+                        <Link href={`/pay/${payment.paymentToken}`} target="_blank">
                           Otworz link platnosci
                         </Link>
                       </p>

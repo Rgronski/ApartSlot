@@ -317,11 +317,11 @@ export default async function AdminReservationsPage({
                       </div>
                     </dl>
 
-                    {reservation.paymentUrl ? (
+                    {reservation.paymentToken ? (
                       <div className="admin-form-actions">
                         <Link
                           className="cta-button"
-                          href={reservation.paymentUrl}
+                          href={`/pay/${reservation.paymentToken}`}
                           target="_blank"
                         >
                           Otworz link platnosci
