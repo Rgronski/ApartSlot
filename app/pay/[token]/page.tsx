@@ -3,13 +3,13 @@ import Link from "next/link";
 import { getPaymentPageData } from "@/services/payments";
 
 type PaymentPageProps = {
-  params: {
+  params: Promise<{
     token: string;
-  };
-  searchParams?: {
+  }>;
+  searchParams?: Promise<{
     checkout?: string;
     mollie_payment_id?: string;
-  };
+  }>;
 };
 
 function formatMoney(amount: number, currency: string) {
@@ -112,9 +112,11 @@ export default async function PaymentPage({
   params,
   searchParams,
 }: PaymentPageProps) {
-  const paymentPageData = await getPaymentPageData(params.token);
+  const { token } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const paymentPageData = await getPaymentPageData(token);
   const stateMeta = getStateMeta(paymentPageData.state);
-  const checkoutNotice = getCheckoutNotice(searchParams?.checkout);
+  const checkoutNotice = getCheckoutNotice(resolvedSearchParams?.checkout);
 
   return (
     <main className="payment-shell">
@@ -239,7 +241,7 @@ export default async function PaymentPage({
                 potwierdzenie od operatora platnosci.
               </p>
               <div className="cta-card">
-                <form method="post" action={`/pay/${params.token}/checkout`}>
+                <form method="post" action={`/pay/${token}/checkout`}>
                   <button className="cta-button" type="submit">
                     Zaplac online
                   </button>
@@ -276,9 +278,9 @@ export default async function PaymentPage({
               zostal uszkodzony.
             </p>
           )}
-          {searchParams?.mollie_payment_id ? (
+          {resolvedSearchParams?.mollie_payment_id ? (
             <p className="session-meta">
-              ID platnosci Mollie: <span>{searchParams.mollie_payment_id}</span>
+              ID platnosci Mollie: <span>{resolvedSearchParams.mollie_payment_id}</span>
             </p>
           ) : null}
           <p className="support-link">
