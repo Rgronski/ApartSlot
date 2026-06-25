@@ -28,6 +28,7 @@ type DashboardReservation = {
   amountToPayNow: number;
   currency: string;
   createdAt: string;
+  paymentUrl: string | null;
 };
 
 type DashboardAttentionPayment = {
@@ -496,6 +497,15 @@ export async function getAdminDashboardData(
                 lastName: true,
               },
             },
+            payments: {
+              take: 1,
+              orderBy: {
+                createdAt: "desc",
+              },
+              select: {
+                paymentUrl: true,
+              },
+            },
           },
         }),
         db.emailLog.findMany({
@@ -578,6 +588,7 @@ export async function getAdminDashboardData(
         amountToPayNow: Number(reservation.amountToPayNow),
         currency: reservation.currency,
         createdAt: formatDateTime(reservation.createdAt),
+        paymentUrl: reservation.payments[0]?.paymentUrl ?? null,
       }));
       recentEmailLogs = emailLogs.map((emailLog) => ({
         id: emailLog.id,

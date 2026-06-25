@@ -317,6 +317,26 @@ export default async function AdminReservationsPage({
                       </div>
                     </dl>
 
+                    {reservation.paymentUrl ? (
+                      <div className="admin-form-actions">
+                        <Link
+                          className="cta-button"
+                          href={reservation.paymentUrl}
+                          target="_blank"
+                        >
+                          Otworz link platnosci
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="inline-notice">
+                        <p>
+                          Link platnosci nie zostal jeszcze zapisany. Jesli to
+                          rezerwacja testowa sprzed poprawki, utworz nowa
+                          rezerwacje albo sprawdz zakladke Platnosci.
+                        </p>
+                      </div>
+                    )}
+
                     {canReservationBeConfirmed(reservation.status) ? (
                       <details className="admin-details">
                         <summary>Potwierdz rezerwacje</summary>
