@@ -71,6 +71,7 @@ type DashboardPricingRuleRecord = {
 
 type DashboardApartment = {
   id: string;
+  ownerId: string | null;
   ownerName: string | null;
   ownerUsername: string | null;
   name: string;
@@ -111,6 +112,13 @@ type DashboardApartment = {
   }[];
 };
 
+type DashboardOwner = {
+  id: string;
+  name: string;
+  username: string;
+  email: string | null;
+};
+
 export type AdminDashboardData =
   | {
       state: "ready";
@@ -119,6 +127,7 @@ export type AdminDashboardData =
       recentEmailLogs: DashboardEmailLog[];
       attentionPayments: DashboardAttentionPayment[];
       apartments: DashboardApartment[];
+      owners: DashboardOwner[];
       warningMessage?: string;
     }
   | {
@@ -240,7 +249,7 @@ export async function getAdminDashboardData(
     const recentEmailLogsTake = options.recentEmailLogsTake ?? 10;
     const attentionPaymentsTake = options.attentionPaymentsTake ?? 6;
 
-    const [apartmentCount, activeApartmentCount, apartments] = await Promise.all([
+    const [apartmentCount, activeApartmentCount, apartments, owners] = await Promise.all([
       db.apartment.count(),
       db.apartment.count({
         where: {
@@ -254,6 +263,7 @@ export async function getAdminDashboardData(
         },
         select: {
           id: true,
+          ownerId: true,
           owner: {
             select: {
               name: true,
@@ -274,6 +284,17 @@ export async function getAdminDashboardData(
           defaultCheckOutTime: true,
           isActive: true,
           googleCalendarId: true,
+        },
+      }),
+      db.owner.findMany({
+        orderBy: {
+          name: "asc",
+        },
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          email: true,
         },
       }),
     ]);
@@ -666,6 +687,7 @@ export async function getAdminDashboardData(
       recentReservations,
       recentEmailLogs,
       attentionPayments,
+      owners,
       apartments: apartments.map((apartment) => {
         const apartmentReservationsForCard =
           reservationsByApartment.get(apartment.id) ?? [];
@@ -678,6 +700,7 @@ export async function getAdminDashboardData(
 
         return {
           id: apartment.id,
+          ownerId: apartment.ownerId,
           ownerName: apartment.owner?.name ?? null,
           ownerUsername: apartment.owner?.username ?? null,
           name: apartment.name,

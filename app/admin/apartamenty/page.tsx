@@ -7,6 +7,7 @@ import { APP_VERSION } from "@/lib/app-version";
 import { buildMonthView } from "@/lib/calendar/month-view";
 import { DomainError } from "@/lib/errors/domain-error";
 import { createApartment } from "@/services/admin/create-apartment";
+import { createOwner } from "@/services/admin/create-owner";
 import { createCalendarBlock } from "@/services/admin/create-calendar-block";
 import { createPricingRule } from "@/services/admin/create-pricing-rule";
 import { deleteApartment } from "@/services/admin/delete-apartment";
@@ -87,6 +88,7 @@ export default async function AdminApartmentsPage({
     dashboard.state === "ready"
       ? dashboard.apartments.filter((apartment) => !apartment.isActive)
       : [];
+  const owners = dashboard.state === "ready" ? dashboard.owners : [];
 
   let pricingPreview:
     | Awaited<ReturnType<typeof previewPricingCalculation>>
@@ -253,6 +255,18 @@ export default async function AdminApartmentsPage({
                   type="text"
                   defaultValue={apartment.googleCalendarId ?? ""}
                 />
+              </label>
+
+              <label className="admin-field">
+                <span>Wlasciciel</span>
+                <select name="ownerId" defaultValue={apartment.ownerId ?? ""}>
+                  <option value="">Brak wlasciciela</option>
+                  {owners.map((owner) => (
+                    <option key={owner.id} value={owner.id}>
+                      {owner.name} ({owner.username})
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 
@@ -672,6 +686,7 @@ export default async function AdminApartmentsPage({
 
     try {
       await createApartment({
+        ownerId: readString(formData, "ownerId"),
         name: readString(formData, "name"),
         slug: readString(formData, "slug"),
         city: readString(formData, "city"),
@@ -708,6 +723,7 @@ export default async function AdminApartmentsPage({
     try {
       await updateApartment({
         apartmentId: readString(formData, "apartmentId"),
+        ownerId: readString(formData, "ownerId"),
         name: readString(formData, "name"),
         slug: readString(formData, "slug"),
         city: readString(formData, "city"),
@@ -737,6 +753,32 @@ export default async function AdminApartmentsPage({
     revalidatePath("/admin");
     revalidatePath("/admin/apartamenty");
     redirect(`/admin/apartamenty?${adminMonthQuery}&status=updated`);
+  }
+
+  async function createOwnerAction(formData: FormData) {
+    "use server";
+
+    try {
+      await createOwner({
+        name: readString(formData, "ownerName"),
+        username: readString(formData, "ownerUsername"),
+        email: readString(formData, "ownerEmail"),
+        phone: readString(formData, "ownerPhone"),
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof DomainError
+          ? error.message
+          : "Nie udalo sie zapisac wlasciciela. Sprobuj ponownie.";
+
+      redirect(
+        `/admin/apartamenty?${adminMonthQuery}&status=error&message=${encodeURIComponent(errorMessage)}`,
+      );
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/apartamenty");
+    redirect(`/admin/apartamenty?${adminMonthQuery}&status=owner_created`);
   }
 
   async function deleteApartmentAction(formData: FormData) {
@@ -986,6 +1028,12 @@ export default async function AdminApartmentsPage({
         </div>
       ) : null}
 
+      {status === "owner_created" ? (
+        <div className="inline-notice inline-notice--success">
+          <p>Wlasciciel zostal dodany poprawnie. Mozesz teraz przypisac do niego apartament.</p>
+        </div>
+      ) : null}
+
       {status === "rule_created" ? (
         <div className="inline-notice inline-notice--success">
           <p>Regula cenowa zostala dodana poprawnie.</p>
@@ -1050,13 +1098,73 @@ export default async function AdminApartmentsPage({
           <section className="admin-card admin-form-card admin-page-section">
             <div className="section-heading">
               <div>
+                <p className="eyebrow">Wlasciciele</p>
+                <h2>Dodaj wlasciciela</h2>
+              </div>
+            </div>
+
+            <p>
+              Wlasciciel to osoba lub firma, do ktorej mozna przypisac apartamenty.
+              Dzieki temu system bedzie gotowy na obsluge wielu wynajmujacych.
+            </p>
+
+            <form action={createOwnerAction} className="admin-form">
+              <div className="admin-form-grid">
+                <label className="admin-field">
+                  <span>Nazwa wlasciciela</span>
+                  <input
+                    name="ownerName"
+                    type="text"
+                    required
+                    placeholder="Np. Apartament Gornicza"
+                  />
+                </label>
+
+                <label className="admin-field">
+                  <span>Login techniczny</span>
+                  <input
+                    name="ownerUsername"
+                    type="text"
+                    placeholder="Np. apartament-gornicza"
+                  />
+                </label>
+
+                <label className="admin-field">
+                  <span>E-mail</span>
+                  <input
+                    name="ownerEmail"
+                    type="email"
+                    placeholder="Np. rezerwacje@example.pl"
+                  />
+                </label>
+
+                <label className="admin-field">
+                  <span>Telefon</span>
+                  <input name="ownerPhone" type="text" placeholder="Opcjonalnie" />
+                </label>
+              </div>
+
+              <div className="admin-form-actions">
+                <button className="cta-button" type="submit">
+                  Zapisz wlasciciela
+                </button>
+                <p className="admin-form-note">
+                  Jesli login zostawisz pusty, system zbuduje go automatycznie z nazwy.
+                </p>
+              </div>
+            </form>
+          </section>
+
+          <section className="admin-card admin-form-card admin-page-section">
+            <div className="section-heading">
+              <div>
                 <p className="eyebrow">Apartamenty</p>
                 <h2>Dodaj nowy apartament</h2>
               </div>
             </div>
 
             <p>
-              Tutaj tworzysz nowy obiekt do sprzedaży. Po zapisaniu pojawi sie od razu
+              Tutaj tworzysz nowy obiekt do sprzedazy. Po zapisaniu pojawi sie od razu
               na liscie nizej.
             </p>
 
@@ -1151,6 +1259,18 @@ export default async function AdminApartmentsPage({
                 <label className="admin-field">
                   <span>Google Calendar ID</span>
                   <input name="googleCalendarId" type="text" placeholder="Opcjonalnie" />
+                </label>
+
+                <label className="admin-field">
+                  <span>Wlasciciel</span>
+                  <select name="ownerId" defaultValue="">
+                    <option value="">Brak wlasciciela</option>
+                    {owners.map((owner) => (
+                      <option key={owner.id} value={owner.id}>
+                        {owner.name} ({owner.username})
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
 

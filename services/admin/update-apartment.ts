@@ -5,6 +5,7 @@ import { DomainError } from "@/lib/errors/domain-error";
 
 type UpdateApartmentInput = {
   apartmentId: string;
+  ownerId?: string;
   name: string;
   slug?: string;
   city?: string;
@@ -22,6 +23,11 @@ type UpdateApartmentInput = {
 };
 
 function normalizeText(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeOptionalId(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
 }
@@ -82,6 +88,7 @@ export async function updateApartment(input: UpdateApartmentInput) {
       },
       data: {
         name,
+        ownerId: normalizeOptionalId(input.ownerId),
         slug,
         city: normalizeText(input.city),
         address: normalizeText(input.address),

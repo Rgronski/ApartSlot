@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { DomainError } from "@/lib/errors/domain-error";
 
 export type CreateApartmentInput = {
+  ownerId?: string;
   name: string;
   slug?: string;
   city?: string;
@@ -20,6 +21,11 @@ export type CreateApartmentInput = {
 };
 
 function normalizeText(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeOptionalId(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
 }
@@ -72,6 +78,7 @@ export async function createApartment(input: CreateApartmentInput) {
     return await prisma.apartment.create({
       data: {
         name,
+        ownerId: normalizeOptionalId(input.ownerId),
         slug,
         city: normalizeText(input.city),
         address: normalizeText(input.address),
