@@ -6,9 +6,9 @@ import { APP_VERSION } from "@/lib/app-version";
 import { buildMonthView } from "@/lib/calendar/month-view";
 import { DomainError } from "@/lib/errors/domain-error";
 import {
-  createApartmentImage,
   deleteApartmentImage,
   getApartmentImages,
+  uploadApartmentImage,
 } from "@/services/admin/apartment-images";
 import { getAdminDashboardData } from "@/services/admin/get-admin-dashboard-data";
 
@@ -57,9 +57,15 @@ export default async function AdminImagesPage({ searchParams }: AdminImagesPageP
     "use server";
 
     try {
-      await createApartmentImage({
+      const imageFile = formData.get("imageFile");
+
+      if (!(imageFile instanceof File)) {
+        throw new DomainError("INVALID_APARTMENT_IMAGE", "Wybierz zdjecie do wyslania.");
+      }
+
+      await uploadApartmentImage({
         apartmentId: readString(formData, "apartmentId"),
-        imageUrl: readString(formData, "imageUrl"),
+        imageFile,
         altText: readString(formData, "altText"),
         displayOrder: readNumber(formData, "displayOrder"),
         isCover: readBoolean(formData, "isCover"),
@@ -112,7 +118,7 @@ export default async function AdminImagesPage({ searchParams }: AdminImagesPageP
           <h1>Zdjecia apartamentow</h1>
           <p className="lead">
             Tutaj dodajesz zdjecia, ktore klient zobaczy na stronie rezerwacji.
-            Na tym etapie wklejasz gotowy link do pliku graficznego.
+            Wybierz plik z telefonu albo komputera, a system zapisze go przy apartamencie.
           </p>
         </div>
         <div className="admin-hero-note">
@@ -200,12 +206,12 @@ export default async function AdminImagesPage({ searchParams }: AdminImagesPageP
                 </label>
 
                 <label className="admin-field">
-                  <span>Link do zdjecia</span>
+                  <span>Zdjecie z telefonu lub komputera</span>
                   <input
-                    name="imageUrl"
-                    type="url"
+                    name="imageFile"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
                     required
-                    placeholder="https://..."
                   />
                 </label>
 
@@ -234,7 +240,7 @@ export default async function AdminImagesPage({ searchParams }: AdminImagesPageP
                   Zapisz zdjecie
                 </button>
                 <p className="admin-form-note">
-                  Link musi prowadzic bezposrednio do pliku graficznego, np. JPG, PNG lub WEBP.
+                  Dozwolone formaty: JPG, PNG i WEBP. Maksymalny rozmiar jednego zdjecia: 6 MB.
                 </p>
               </div>
             </form>
