@@ -147,6 +147,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         id: string;
         name: string;
         city: string | null;
+        owner: {
+          name: string;
+          username: string;
+        } | null;
         basePricePerNight: unknown;
         googleCalendarId: string | null;
         reservations: {
@@ -176,6 +180,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         id: true,
         name: true,
         city: true,
+        owner: {
+          select: {
+            name: true,
+            username: true,
+          },
+        },
         basePricePerNight: true,
         googleCalendarId: true,
         reservations: {
@@ -249,6 +259,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     id: apartment.id,
     name: apartment.name,
     city: apartment.city,
+    ownerName: apartment.owner?.name ?? null,
+    ownerUsername: apartment.owner?.username ?? null,
     basePricePerNight: Number(apartment.basePricePerNight),
     occupancyDates: buildPublicOccupancyDates({
       reservations: apartment.reservations,
@@ -374,7 +386,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <select name="apartmentId" defaultValue={apartments[0]?.id} required>
                   {apartmentsForCalendar.map((apartment) => (
                     <option key={apartment.id} value={apartment.id}>
-                      {apartment.name} | {apartment.city ?? "bez miasta"} | od {Number(apartment.basePricePerNight).toFixed(2)} PLN
+                      {apartment.name} | {apartment.ownerName ?? "brak wlasciciela"} | {apartment.city ?? "bez miasta"} | od {Number(apartment.basePricePerNight).toFixed(2)} PLN
                     </option>
                   ))}
                 </select>
@@ -509,6 +521,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     <div>
                       <h3>{apartment.name}</h3>
                       <p>{apartment.city ?? "Miasto nieuzupelnione"}</p>
+                      <p>Wlasciciel: {apartment.ownerName ?? "nieprzypisany"}</p>
                     </div>
                     <span className="calendar-month-chip">{monthCalendar.monthLabel}</span>
                   </div>

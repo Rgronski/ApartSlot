@@ -166,6 +166,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     dashboard.state === "ready"
       ? dashboard.apartments.filter((apartment) => !apartment.isActive)
       : [];
+  const ownerUsernames =
+    dashboard.state === "ready"
+      ? new Set(
+          dashboard.apartments
+            .map((apartment) => apartment.ownerUsername)
+            .filter((ownerUsername): ownerUsername is string => Boolean(ownerUsername)),
+        )
+      : new Set<string>();
+  const unassignedApartmentsCount =
+    dashboard.state === "ready"
+      ? dashboard.apartments.filter((apartment) => !apartment.ownerUsername).length
+      : 0;
   const googleCalendarStatus =
     dashboard.state === "ready"
       ? await getGoogleCalendarIntegrationStatus({
@@ -1599,6 +1611,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   </p>
                   <p className="inline-meta">
                     Nieaktywne: {inactiveApartmentsForManagement.length}
+                  </p>
+                  <p className="inline-meta">
+                    Wlasciciele przypisani: {ownerUsernames.size}
+                  </p>
+                  <p className="inline-meta">
+                    Apartamenty bez wlasciciela: {unassignedApartmentsCount}
                   </p>
                 </article>
               </article>
