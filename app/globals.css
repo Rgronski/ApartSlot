@@ -750,6 +750,140 @@ a {
   background: rgba(255, 252, 247, 0.88);
 }
 
+.public-gallery-list,
+.admin-image-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.public-gallery-list {
+  margin: 20px 0 24px;
+}
+
+.public-gallery-card,
+.admin-image-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 248, 236, 0.72);
+}
+
+.public-gallery-card h3,
+.public-gallery-card p,
+.admin-image-card p {
+  margin: 0;
+}
+
+.public-gallery-card p,
+.admin-image-card p {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.public-gallery-thumbnails {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  margin-top: 14px;
+}
+
+.public-gallery-thumb {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  min-height: 92px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 252, 247, 0.88);
+}
+
+.public-gallery-thumb img,
+.admin-image-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.public-gallery-thumb span {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(42, 33, 24, 0.72);
+  color: #fffaf2;
+  font-size: 0.78rem;
+}
+
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.photo-lightbox:target {
+  display: flex;
+}
+
+.photo-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(42, 33, 24, 0.72);
+}
+
+.photo-lightbox-panel {
+  position: relative;
+  z-index: 1;
+  width: min(920px, 100%);
+  margin: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 250, 242, 0.24);
+  border-radius: 20px;
+  background: #fffaf2;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28);
+}
+
+.photo-lightbox-panel img {
+  display: block;
+  width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #f6f1e8;
+}
+
+.photo-lightbox-panel figcaption {
+  margin-top: 10px;
+  color: var(--muted);
+}
+
+.photo-lightbox-close {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(42, 33, 24, 0.78);
+  color: #fffaf2;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.admin-image-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: 14px;
+}
+
+.admin-image-card img {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+
 .admin-inline-form {
   margin-top: 12px;
 }

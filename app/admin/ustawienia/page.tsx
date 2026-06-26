@@ -85,6 +85,9 @@ export default async function AdminSettingsPage({
         <Link className="admin-section-link" href={`/admin/apartamenty?${adminMonthQuery}`}>
           Apartamenty
         </Link>
+        <Link className="admin-section-link" href={`/admin/zdjecia?${adminMonthQuery}`}>
+          Zdjecia
+        </Link>
         <Link
           className="admin-section-link admin-section-link--active"
           href={`/admin/ustawienia?${adminMonthQuery}`}

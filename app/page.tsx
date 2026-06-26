@@ -6,6 +6,7 @@ import { APP_VERSION } from "@/lib/app-version";
 import { buildMonthView, WEEK_DAY_LABELS } from "@/lib/calendar/month-view";
 import { prisma } from "@/lib/db/prisma";
 import { DomainError } from "@/lib/errors/domain-error";
+import { getApartmentImages } from "@/services/admin/apartment-images";
 import { getGoogleCalendarBusyMap } from "@/services/calendar";
 import { createOnlineReservationWithPrisma } from "@/services/reservations";
 
@@ -167,6 +168,20 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       }>
     | [] = [];
   let apartmentsError: string | null = null;
+  let apartmentImages: Awaited<ReturnType<typeof getApartmentImages>> = [];
+  const apartmentImagesByApartmentId = new Map<string, typeof apartmentImages>();
+
+  try {
+    apartmentImages = await getApartmentImages();
+  } catch (error) {
+    console.error("Apartment images load failed on homepage", error);
+  }
+
+  for (const image of apartmentImages) {
+    const current = apartmentImagesByApartmentId.get(image.apartmentId) ?? [];
+    current.push(image);
+    apartmentImagesByApartmentId.set(image.apartmentId, current);
+  }
 
   try {
     apartments = await prisma.apartment.findMany({
@@ -262,6 +277,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     ownerName: apartment.owner?.name ?? null,
     ownerUsername: apartment.owner?.username ?? null,
     basePricePerNight: Number(apartment.basePricePerNight),
+    images: apartmentImagesByApartmentId.get(apartment.id) ?? [],
     occupancyDates: buildPublicOccupancyDates({
       reservations: apartment.reservations,
       calendarBlocks: apartment.calendarBlocks,
@@ -379,100 +395,149 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <p>Dodaj aktywny apartament w panelu admina, aby uruchomic rezerwacje online.</p>
           </div>
         ) : (
-          <form action={createPublicReservationAction} className="admin-form">
-            <div className="admin-form-grid">
-              <label className="admin-field">
-                <span>Apartament</span>
-                <select name="apartmentId" defaultValue={apartments[0]?.id} required>
-                  {apartmentsForCalendar.map((apartment) => (
-                    <option key={apartment.id} value={apartment.id}>
-                      {apartment.name} | {apartment.ownerName ?? "brak wlasciciela"} | {apartment.city ?? "bez miasta"} | od {Number(apartment.basePricePerNight).toFixed(2)} PLN
-                    </option>
-                  ))}
-                </select>
-              </label>
+          <>
+            <div className="public-gallery-list">
+              {apartmentsForCalendar.map((apartment) => (
+                <article className="public-gallery-card" key={`gallery-${apartment.id}`}>
+                  <div>
+                    <h3>{apartment.name}</h3>
+                    <p>
+                      {apartment.city ?? "Miasto nieuzupelnione"} | od{" "}
+                      {apartment.basePricePerNight.toFixed(2)} PLN
+                    </p>
+                  </div>
 
-              <label className="admin-field">
-                <span>Przyjazd</span>
-                <input name="checkInDate" type="date" required />
-              </label>
-
-              <label className="admin-field">
-                <span>Wyjazd</span>
-                <input name="checkOutDate" type="date" required />
-              </label>
-
-              <label className="admin-field">
-                <span>Liczba gosci</span>
-                <input name="guestsCount" type="number" min="1" step="1" defaultValue="2" required />
-              </label>
-
-              <label className="admin-field">
-                <span>Imie</span>
-                <input name="firstName" type="text" required />
-              </label>
-
-              <label className="admin-field">
-                <span>Nazwisko</span>
-                <input name="lastName" type="text" required />
-              </label>
-
-              <label className="admin-field">
-                <span>E-mail</span>
-                <input name="email" type="email" required />
-              </label>
-
-              <label className="admin-field">
-                <span>Telefon</span>
-                <input name="phone" type="text" required />
-              </label>
-
-              <label className="admin-field">
-                <span>Kraj</span>
-                <input name="country" type="text" placeholder="Opcjonalnie" />
-              </label>
-
-              <label className="admin-field">
-                <span>Miasto</span>
-                <input name="city" type="text" placeholder="Opcjonalnie" />
-              </label>
+                  {apartment.images.length === 0 ? (
+                    <p className="inline-meta">Ten apartament nie ma jeszcze zdjec.</p>
+                  ) : (
+                    <div className="public-gallery-thumbnails">
+                      {apartment.images.map((image, imageIndex) => (
+                        <a
+                          href={`#photo-${image.id}`}
+                          key={image.id}
+                          className="public-gallery-thumb"
+                        >
+                          <img
+                            alt={image.altText ?? apartment.name}
+                            src={image.imageUrl}
+                          />
+                          {imageIndex === 0 || image.isCover ? <span>Podglad</span> : null}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              ))}
             </div>
 
-            <label className="admin-field">
-              <span>Uwagi do pobytu</span>
-              <textarea
-                name="customerNotes"
-                rows={4}
-                placeholder="Np. planowany pozny przyjazd albo prosba o fakture."
-              />
-            </label>
+            {apartmentImages.map((image) => (
+              <div className="photo-lightbox" id={`photo-${image.id}`} key={`lightbox-${image.id}`}>
+                <a className="photo-lightbox-backdrop" href="#" aria-label="Zamknij podglad" />
+                <figure className="photo-lightbox-panel">
+                  <img alt={image.altText ?? "Zdjecie apartamentu"} src={image.imageUrl} />
+                  <figcaption>{image.altText ?? "Zdjecie apartamentu"}</figcaption>
+                  <a className="photo-lightbox-close" href="#">
+                    Zamknij
+                  </a>
+                </figure>
+              </div>
+            ))}
 
-            <div className="consent-stack">
-              <label className="admin-toggle">
-                <input name="termsAccepted" type="checkbox" required />
-                <span>Akceptuje regulamin rezerwacji</span>
+            <form action={createPublicReservationAction} className="admin-form">
+              <div className="admin-form-grid">
+                <label className="admin-field">
+                  <span>Apartament</span>
+                  <select name="apartmentId" defaultValue={apartments[0]?.id} required>
+                    {apartmentsForCalendar.map((apartment) => (
+                      <option key={apartment.id} value={apartment.id}>
+                        {apartment.name} | {apartment.ownerName ?? "brak wlasciciela"} | {apartment.city ?? "bez miasta"} | od {Number(apartment.basePricePerNight).toFixed(2)} PLN
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="admin-field">
+                  <span>Przyjazd</span>
+                  <input name="checkInDate" type="date" required />
+                </label>
+
+                <label className="admin-field">
+                  <span>Wyjazd</span>
+                  <input name="checkOutDate" type="date" required />
+                </label>
+
+                <label className="admin-field">
+                  <span>Liczba gosci</span>
+                  <input name="guestsCount" type="number" min="1" step="1" defaultValue="2" required />
+                </label>
+
+                <label className="admin-field">
+                  <span>Imie</span>
+                  <input name="firstName" type="text" required />
+                </label>
+
+                <label className="admin-field">
+                  <span>Nazwisko</span>
+                  <input name="lastName" type="text" required />
+                </label>
+
+                <label className="admin-field">
+                  <span>E-mail</span>
+                  <input name="email" type="email" required />
+                </label>
+
+                <label className="admin-field">
+                  <span>Telefon</span>
+                  <input name="phone" type="text" required />
+                </label>
+
+                <label className="admin-field">
+                  <span>Kraj</span>
+                  <input name="country" type="text" placeholder="Opcjonalnie" />
+                </label>
+
+                <label className="admin-field">
+                  <span>Miasto</span>
+                  <input name="city" type="text" placeholder="Opcjonalnie" />
+                </label>
+              </div>
+
+              <label className="admin-field">
+                <span>Uwagi do pobytu</span>
+                <textarea
+                  name="customerNotes"
+                  rows={4}
+                  placeholder="Np. planowany pozny przyjazd albo prosba o fakture."
+                />
               </label>
 
-              <label className="admin-toggle">
-                <input name="rodoAccepted" type="checkbox" required />
-                <span>Akceptuje zasady przetwarzania danych</span>
-              </label>
+              <div className="consent-stack">
+                <label className="admin-toggle">
+                  <input name="termsAccepted" type="checkbox" required />
+                  <span>Akceptuje regulamin rezerwacji</span>
+                </label>
 
-              <label className="admin-toggle">
-                <input name="marketingConsent" type="checkbox" />
-                <span>Zgoda marketingowa jest opcjonalna</span>
-              </label>
-            </div>
+                <label className="admin-toggle">
+                  <input name="rodoAccepted" type="checkbox" required />
+                  <span>Akceptuje zasady przetwarzania danych</span>
+                </label>
 
-            <div className="admin-form-actions">
-              <button className="cta-button" type="submit">
-                Przejdz do platnosci
-              </button>
-              <p className="admin-form-note">
-                System sprawdzi dostepnosc i od razu sprobuje uruchomic platnosc online.
-              </p>
-            </div>
-          </form>
+                <label className="admin-toggle">
+                  <input name="marketingConsent" type="checkbox" />
+                  <span>Zgoda marketingowa jest opcjonalna</span>
+                </label>
+              </div>
+
+              <div className="admin-form-actions">
+                <button className="cta-button" type="submit">
+                  Przejdz do platnosci
+                </button>
+                <p className="admin-form-note">
+                  System sprawdzi dostepnosc i od razu sprobuje uruchomic platnosc online.
+                </p>
+              </div>
+            </form>
+          </>
         )}
       </section>
 

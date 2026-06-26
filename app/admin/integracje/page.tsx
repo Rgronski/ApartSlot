@@ -162,6 +162,9 @@ export default async function AdminIntegrationsPage({
         <Link className="admin-section-link" href={`/admin/apartamenty?${adminMonthQuery}`}>
           Apartamenty
         </Link>
+        <Link className="admin-section-link" href={`/admin/zdjecia?${adminMonthQuery}`}>
+          Zdjecia
+        </Link>
         <Link className="admin-section-link" href={`/admin/ustawienia?${adminMonthQuery}`}>
           Ustawienia
         </Link>
