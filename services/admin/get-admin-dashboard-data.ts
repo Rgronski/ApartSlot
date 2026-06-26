@@ -71,6 +71,8 @@ type DashboardPricingRuleRecord = {
 
 type DashboardApartment = {
   id: string;
+  ownerName: string | null;
+  ownerUsername: string | null;
   name: string;
   slug: string;
   city: string | null;
@@ -252,6 +254,12 @@ export async function getAdminDashboardData(
         },
         select: {
           id: true,
+          owner: {
+            select: {
+              name: true,
+              username: true,
+            },
+          },
           name: true,
           slug: true,
           city: true,
@@ -670,6 +678,8 @@ export async function getAdminDashboardData(
 
         return {
           id: apartment.id,
+          ownerName: apartment.owner?.name ?? null,
+          ownerUsername: apartment.owner?.username ?? null,
           name: apartment.name,
           slug: apartment.slug,
           city: apartment.city,

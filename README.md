@@ -33,4 +33,5 @@ Dodanie modeli danych w Prisma oraz logiki sprawdzania dostepnosci terminow.
 - [Webhook Stripe](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/webhook-stripe.md>)
 - [Google Calendar po platnosci](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/google-calendar-po-platnosci.md>)
 - [E-mail potwierdzenie po platnosci](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/email-potwierdzenie-po-platnosci.md>)
+- [Plan wielu wlascicieli](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/wielu-wlascicieli-plan.md>)
 - [Konfiguracja krok po kroku](</C:/Users/Dell/Documents/Apka do wynajmu krotkoterminowego/docs/konfiguracja-krok-po-kroku-google-resend-stripe.md>)

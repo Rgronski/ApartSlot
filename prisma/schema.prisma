@@ -87,6 +87,7 @@ enum AdminUserRole {
 
 model Apartment {
   id                  String          @id @default(uuid()) @db.Uuid
+  ownerId             String?         @map("owner_id") @db.Uuid
   name                String
   slug                String          @unique
   address             String?
@@ -107,9 +108,25 @@ model Apartment {
   reservations        Reservation[]
   pricingRules        PricingRule[]
   calendarBlocks      CalendarBlock[]
+  owner               Owner?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
+  @@index([ownerId])
   @@index([isActive])
   @@map("apartments")
+}
+
+model Owner {
+  id        String      @id @default(uuid()) @db.Uuid
+  name      String
+  username  String      @unique
+  email     String?
+  phone     String?
+  createdAt DateTime    @map("created_at") @default(now())
+  updatedAt DateTime    @map("updated_at") @updatedAt
+  apartments Apartment[]
+
+  @@index([email])
+  @@map("owners")
 }
 
 model Guest {

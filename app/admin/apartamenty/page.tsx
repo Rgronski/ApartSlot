@@ -136,6 +136,10 @@ export default async function AdminApartmentsPage({
           Google Calendar:{" "}
           {apartment.googleCalendarId ? "podlaczony w rekordzie apartamentu" : "brak ID kalendarza"}
         </p>
+        <p className="inline-meta">
+          Wlasciciel: {apartment.ownerName ?? "nieprzypisany"}
+          {apartment.ownerUsername ? ` (${apartment.ownerUsername})` : ""}
+        </p>
 
         <details className="admin-details">
           <summary>Edytuj dane apartamentu</summary>
