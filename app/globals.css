@@ -1060,19 +1060,207 @@ a {
 }
 
 @media (max-width: 640px) {
+  body {
+    background: linear-gradient(180deg, #fcf6ed 0%, var(--bg) 100%);
+  }
+
   .page-shell,
   .admin-shell,
   .payment-shell {
     width: min(100% - 20px, 100%);
-    padding: 24px 0 40px;
+    padding: 14px 0 36px;
   }
 
   .hero-card,
   .info-card,
   .admin-card,
   .payment-card {
-    border-radius: 22px;
-    padding: 22px;
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 14px 36px rgba(56, 38, 19, 0.09);
+  }
+
+  .hero-card h1,
+  .admin-card h1,
+  .payment-card h1 {
+    font-size: 2.2rem;
+    line-height: 1.02;
+  }
+
+  .lead,
+  .info-card p,
+  .info-card li,
+  .admin-card p,
+  .payment-card p,
+  .payment-card li {
+    font-size: 0.96rem;
+    line-height: 1.55;
+  }
+
+  .content-grid,
+  .booking-card,
+  .admin-grid,
+  .admin-metrics,
+  .admin-page-section {
+    margin-top: 14px;
+  }
+
+  .content-grid,
+  .admin-grid,
+  .admin-metrics,
+  .payment-grid {
+    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-section-menu {
+    position: sticky;
+    top: 8px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 10px;
+    border-radius: 18px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-section-link {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 0.92rem;
+    white-space: nowrap;
+  }
+
+  .admin-hero-note {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .section-heading,
+  .admin-row-top,
+  .calendar-card-header,
+  .admin-form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-badges {
+    justify-content: flex-start;
+  }
+
+  .admin-form,
+  .admin-stack {
+    gap: 12px;
+  }
+
+  .admin-form-grid,
+  .admin-form-grid--compact {
+    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-field input,
+  .admin-field textarea,
+  .admin-field select {
+    min-height: 48px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 16px;
+  }
+
+  .admin-toggle {
+    align-items: flex-start;
+  }
+
+  .admin-toggle input {
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+  }
+
+  .cta-button,
+  .cta-disabled {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .public-gallery-card,
+  .calendar-card,
+  .admin-row-card,
+  .pricing-rule-card,
+  .admin-details {
+    border-radius: 16px;
+    padding: 14px;
+  }
+
+  .public-gallery-thumbnails {
+    gap: 8px;
+  }
+
+  .public-gallery-thumb {
+    flex-basis: 88px;
+    width: 88px;
+    height: 66px;
+  }
+
+  .calendar-toolbar {
+    gap: 8px;
+    margin: 14px 0;
+  }
+
+  .calendar-toolbar-label,
+  .calendar-nav-button {
+    width: 100%;
+  }
+
+  .calendar-grid-labels,
+  .calendar-grid {
+    gap: 4px;
+  }
+
+  .calendar-grid-labels span {
+    font-size: 0.68rem;
+    letter-spacing: 0;
+  }
+
+  .calendar-day {
+    min-height: 34px;
+    border-radius: 10px;
+    font-size: 0.86rem;
+  }
+
+  .calendar-legend {
+    gap: 10px;
+    font-size: 0.84rem;
+  }
+
+  .photo-lightbox {
+    padding: 10px;
+  }
+
+  .photo-lightbox-panel {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .photo-lightbox-panel img {
+    max-height: 74vh;
+    border-radius: 12px;
+  }
+
+  .photo-lightbox-close {
+    top: 18px;
+    right: 18px;
+  }
+
+  .app-version-badge {
+    right: 10px;
+    bottom: 10px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
   }
 }
 
