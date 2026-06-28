@@ -1059,6 +1059,254 @@ a {
   font-size: 0.95rem;
 }
 
+.landing-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 72px;
+}
+
+.landing-nav {
+  position: sticky;
+  top: 14px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 252, 247, 0.9);
+  box-shadow: 0 16px 40px rgba(56, 38, 19, 0.1);
+  backdrop-filter: blur(12px);
+}
+
+.landing-brand {
+  color: var(--text);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.landing-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing-nav-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+.landing-login-link {
+  border: 1px solid rgba(189, 123, 48, 0.28);
+  background: rgba(255, 241, 214, 0.96);
+}
+
+.landing-hero,
+.landing-section,
+.landing-final-cta {
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+
+.landing-hero {
+  display: grid;
+  gap: 24px;
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.8fr);
+  padding: 34px;
+}
+
+.landing-hero h1,
+.landing-section h2,
+.landing-final-cta h2 {
+  margin: 0;
+  color: var(--text);
+}
+
+.landing-hero h1 {
+  max-width: 820px;
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  line-height: 0.96;
+}
+
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.landing-primary-cta {
+  background: #2a2118;
+  color: #fffaf2;
+}
+
+.landing-primary-cta:hover {
+  background: #3a2b1f;
+}
+
+.landing-hero-panel,
+.landing-benefit-card,
+.landing-apartment-card,
+.landing-split,
+.landing-final-cta {
+  background: rgba(255, 250, 242, 0.82);
+}
+
+.landing-hero-panel {
+  display: grid;
+  align-content: center;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+}
+
+.landing-hero-panel h2 {
+  margin: 0;
+}
+
+.landing-hero-panel ul {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.landing-panel-label {
+  margin: 0 0 10px;
+  color: var(--accent-dark);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.landing-section {
+  margin-top: 24px;
+  padding: 28px;
+}
+
+.landing-section-note {
+  max-width: 300px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.landing-carousel {
+  display: grid;
+  grid-auto-columns: minmax(260px, 360px);
+  grid-auto-flow: column;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 4px 4px 14px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.landing-apartment-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  scroll-snap-align: start;
+}
+
+.landing-apartment-card img,
+.landing-apartment-placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: linear-gradient(135deg, rgba(189, 123, 48, 0.16), rgba(255, 250, 242, 0.9));
+}
+
+.landing-apartment-placeholder {
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  color: var(--accent-dark);
+  font-weight: 800;
+  text-align: center;
+}
+
+.landing-apartment-body {
+  padding: 18px;
+}
+
+.landing-apartment-body h3,
+.landing-benefit-card h3 {
+  margin: 0;
+}
+
+.landing-apartment-body p,
+.landing-benefit-card p,
+.landing-final-cta p,
+.landing-split li {
+  color: var(--muted);
+  line-height: 1.58;
+}
+
+.landing-apartment-body strong {
+  display: inline-flex;
+  margin-top: 8px;
+  color: var(--accent-dark);
+}
+
+.landing-benefits {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.landing-benefit-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+.landing-split,
+.landing-final-cta {
+  display: grid;
+  gap: 22px;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.75fr);
+}
+
+.landing-split ol {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 24px;
+}
+
+.landing-final-cta {
+  margin-top: 24px;
+  padding: 28px;
+}
+
+.landing-final-cta p {
+  margin-bottom: 0;
+}
+
 @media (max-width: 640px) {
   body {
     background: linear-gradient(180deg, #fcf6ed 0%, var(--bg) 100%);
@@ -1262,15 +1510,82 @@ a {
     padding: 6px 10px;
     font-size: 0.78rem;
   }
+
+  .landing-shell {
+    width: min(100% - 20px, 100%);
+    padding: 10px 0 36px;
+  }
+
+  .landing-nav {
+    top: 8px;
+    align-items: stretch;
+    flex-direction: column;
+    border-radius: 18px;
+  }
+
+  .landing-nav-actions {
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .landing-nav-actions a {
+    flex: 0 0 auto;
+  }
+
+  .landing-hero,
+  .landing-section,
+  .landing-final-cta {
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  .landing-hero,
+  .landing-split,
+  .landing-final-cta {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-hero h1 {
+    font-size: 2.35rem;
+  }
+
+  .landing-actions .cta-button {
+    width: 100%;
+  }
+
+  .landing-hero-panel,
+  .landing-benefit-card,
+  .landing-apartment-card {
+    border-radius: 16px;
+  }
+
+  .landing-benefits {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .landing-carousel {
+    grid-auto-columns: minmax(238px, 82vw);
+    gap: 12px;
+    margin-right: -18px;
+    padding-right: 18px;
+  }
 }
 
-@media (max-width: 920px) {
+@media (min-width: 641px) and (max-width: 920px) {
   .admin-hero,
-  .admin-layout {
+  .admin-layout,
+  .landing-hero,
+  .landing-split,
+  .landing-final-cta {
     grid-template-columns: 1fr;
   }
 
   .admin-section-menu {
     top: 10px;
+  }
+
+  .landing-benefits {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
